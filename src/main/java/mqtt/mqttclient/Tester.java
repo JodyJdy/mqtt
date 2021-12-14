@@ -3,6 +3,7 @@
 package mqtt.mqttclient;
 
 import io.netty.util.CharsetUtil;
+import mqtt.enums.MqttQoS;
 import mqtt.storage.Message;
 
 import java.util.ArrayList;
@@ -32,5 +33,9 @@ public class Tester {
         publishResults.forEach(PublishResult::waitForAck);
         long end = System.currentTimeMillis();
         System.out.println(end - start);
+
+        publisher.sendSubscribe("/a/b/c", MqttQoS.AT_LEAST_ONCE.value(),x->{
+            System.out.println("接收到消息");
+        });
     }
 }

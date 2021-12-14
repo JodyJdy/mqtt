@@ -11,6 +11,7 @@ import mqtt.util.MqttMessageUtil;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 用于处理客户端所有的消息发布
@@ -21,7 +22,7 @@ public class Publisher {
     /**
      * 报文id
      */
-    private AtomicInteger packetId = new AtomicInteger(1);
+    private AtomicLong packetId = new AtomicLong(1);
 
     private final Ack ack;
 
@@ -50,7 +51,7 @@ public class Publisher {
       发布消息
      */
     public PublishResult publish(Message message){
-        int id = packetId.getAndIncrement() % 65536;
+        int id = (int)(packetId.getAndIncrement() % 65536);
         message.setPacketId(id);
         //qos级别为0，不需要等待服务端响应，不需要进行ack的处理
         if(message.getQos() != 0) {
@@ -108,7 +109,7 @@ public class Publisher {
      * 发送订阅 报文
      */
     public void sendSubscribe(String subscribe,int qos,MessageListener listener){
-        int id = packetId.getAndIncrement() % 65536;
+        int id = (int)(packetId.getAndIncrement() % 65536);
         MqttMessage msg = MqttMessageUtil.subscribe(subscribe,MqttQoS.valueOf(qos),id);
         channel.writeAndFlush(msg);
         subMap.put(subscribe,listener);
@@ -118,7 +119,7 @@ public class Publisher {
      * 发送订阅取消报文
      */
     public void sendUnsubscribe(String subscribe){
-        int id = packetId.getAndIncrement() % 65536;
+        int id = (int)(packetId.getAndIncrement() % 65536);
         MqttMessage msg = MqttMessageUtil.unsub(subscribe,id);
         channel.writeAndFlush(msg);
         subMap.remove(subscribe);
