@@ -2,11 +2,6 @@
 
 package mqtt.storage;
 
-/**
- *
- * @date 2021/12/13
- **/
-
 import java.io.IOException;
 
 /**

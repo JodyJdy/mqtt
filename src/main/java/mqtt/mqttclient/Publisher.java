@@ -1,5 +1,3 @@
-
-
 package mqtt.mqttclient;
 
 import io.netty.channel.Channel;
@@ -10,7 +8,6 @@ import mqtt.util.MqttMessageUtil;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**

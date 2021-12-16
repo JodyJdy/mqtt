@@ -2,11 +2,6 @@
 
 package mqtt.storage;
 
-/**
- *
- * @date 2021/12/13
- **/
-
 import io.netty.channel.Channel;
 import mqtt.mqttserver.Receiver;
 import mqtt.mqttserver.UserSessions;

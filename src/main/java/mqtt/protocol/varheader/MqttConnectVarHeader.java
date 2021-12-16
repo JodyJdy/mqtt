@@ -2,11 +2,6 @@
 
 package mqtt.protocol.varheader;
 
-/**
- *
- * @date 2021/12/8
- **/
-
 import io.netty.util.internal.StringUtil;
 
 /**
