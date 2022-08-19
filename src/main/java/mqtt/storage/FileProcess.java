@@ -88,9 +88,9 @@ public class FileProcess {
         this.fileOperationSemaphore = new FileOperationSemaphore(filePointer);
         //将文件指针FilePointer同步到文件中去
         ScheduledThreadPoolExecutor filePointerSyncer = new ScheduledThreadPoolExecutor(1, r -> new Thread("write-filePointer-thread"));
-        filePointerSyncer.scheduleWithFixedDelay(this::writeFilePointer,2,2, TimeUnit.SECONDS);
-        //将 内存中的数据刷盘,30s一次
-        filePointerSyncer.scheduleAtFixedRate(()->writer.force(),5,30,TimeUnit.SECONDS);
+        filePointerSyncer.scheduleWithFixedDelay(this::writeFilePointer,1,1, TimeUnit.SECONDS);
+        //将 内存中的数据刷盘,5s一次
+        filePointerSyncer.scheduleAtFixedRate(()->writer.force(),0,5,TimeUnit.SECONDS);
     }
 
     /**
