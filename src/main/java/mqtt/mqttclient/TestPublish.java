@@ -3,7 +3,6 @@
 package mqtt.mqttclient;
 
 import io.netty.util.CharsetUtil;
-import mqtt.enums.MqttQoS;
 import mqtt.storage.Message;
 
 import java.util.ArrayList;
@@ -13,29 +12,26 @@ import java.util.List;
  *测试类
  **/
 
-public class Tester {
+public class TestPublish {
     public static void main(String[] args) throws InterruptedException {
         MqttClient mqttClient = new MqttClient(9999,"localhost");
 
         MqttConnectOptions options = new MqttConnectOptions();
-        options.setClientIdentifier("mqtt");
+        options.setClientIdentifier("mqttPublisher");
         options.setUserName("aa");
         options.setPassword("bb".getBytes());
         Publisher publisher = mqttClient.connect(options);
         Message message = new Message("hello","hello world".getBytes(CharsetUtil.UTF_8),1);
         List<PublishResult> publishResults = new ArrayList<>();
+        Thread.sleep(1000);
 
-        Thread.sleep(10000);
         long start = System.currentTimeMillis();
-        for(int i=0;i<50000;i++){
+        for(int i=0;i<300000;i++){
             publishResults.add(publisher.publish(message));
         }
         publishResults.forEach(PublishResult::waitForAck);
         long end = System.currentTimeMillis();
         System.out.println(end - start);
 
-        publisher.sendSubscribe("/a/b/c", MqttQoS.AT_LEAST_ONCE.value(),x->{
-            System.out.println("接收到消息");
-        });
     }
 }
