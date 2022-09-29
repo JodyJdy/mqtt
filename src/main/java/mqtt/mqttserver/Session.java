@@ -23,7 +23,7 @@ public class Session {
     /**
      * 用户的订阅
      */
-    private Map<String, MqttQoS> subscribes = new HashMap<>(2);
+    private final Map<String, MqttQoS> subscribes = new HashMap<>(2);
 
 
     public Session(Channel channel, MqttConnectVarHeader mqttConnectVarHeader, MqttConnectPayload mqttConnectPayload) {
@@ -44,12 +44,12 @@ public class Session {
         return mqttConnectPayload;
     }
 
-    void addSubSscribe(List<MqttTopic> topics){
+    void addSubscribe(List<MqttTopic> topics){
         topics.forEach(topic ->subscribes.put(topic.getTopic(),topic.getQoS()));
     }
 
     void rmSubscribe(List<String> topics){
-        topics.forEach(topic->subscribes.remove(topic));
+        topics.forEach(subscribes::remove);
     }
 
     /**
