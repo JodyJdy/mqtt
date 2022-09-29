@@ -17,7 +17,7 @@ public class UserSessions {
     /**
      * 用户名 -> Session之间的映射
      */
-    private Map<String, Session> idToUser = new HashMap<>(2);
+    private final Map<String, Session> idToUser = new HashMap<>(2);
     /**
      * 发布 到订阅用户之间的缓存,避免每次都进行查询
      */
@@ -47,7 +47,7 @@ public class UserSessions {
      */
     public synchronized void addSub(String id, List<MqttTopic> subs){
         Session session = idToUser.get(id);
-        session.addSubSscribe(subs);
+        session.addSubscribe(subs);
         //重置缓存
         publishToUser = new HashMap<>(2);
     }
@@ -64,7 +64,7 @@ public class UserSessions {
     /**
      * 根据发布的topic 获取对应订阅用户
      */
-    public  Set<Receiver> getReciever(String publish){
+    public  Set<Receiver> getReceiver(String publish){
         if(publishToUser.containsKey(publish)){
             return publishToUser.get(publish);
         }

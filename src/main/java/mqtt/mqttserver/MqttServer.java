@@ -39,13 +39,11 @@ public class MqttServer {
             //中转接收到的所有消息
             MessageQueue queue = new MessageQueue();
             //用于将消息写入文件
-            FileProcess fileProcess = new FileProcess();
+            MessageStorage messageStorage = new MessageStorage();
             //用于写数据
-            MessageWriter writer  = new MessageWriter(queue,fileProcess);
+            MessageWriter writer  = new MessageWriter(queue, messageStorage);
             //用于从文件读数据
-            MessageFileReader reader = new MessageFileReader(fileProcess, userSessions);
-            //用于从中转队列读数据
-            MessageQueueReader queueReader = new MessageQueueReader(queue,userSessions);
+            MessageFileReader reader = new MessageFileReader(messageStorage, userSessions);
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -61,7 +59,6 @@ public class MqttServer {
             // 启动消息处理
             writer.start();
             reader.start();
-            queueReader.start();
             ChannelFuture cf = bootstrap.bind(port).sync();
             cf.channel().closeFuture().sync();
         } finally {

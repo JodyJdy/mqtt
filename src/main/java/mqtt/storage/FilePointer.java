@@ -5,6 +5,7 @@ package mqtt.storage;
 /**
  * 文件指针，描述当前文件读取/写入位置
  */
+@Deprecated
 public class FilePointer {
 
     private volatile long readPos;
