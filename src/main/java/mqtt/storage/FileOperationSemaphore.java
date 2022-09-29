@@ -7,6 +7,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
  * 如果当前无文件可读，阻塞住线程，有文件读取，会唤醒线程进行读取
  *
  */
+@Deprecated
 class FileOperationSemaphore {
     private final Sync sync;
 
@@ -38,14 +39,14 @@ class FileOperationSemaphore {
     /**
      * 可读的
      */
-    void readble(){
+    void readable(){
         this.sync.releaseShared(1);
     }
 
     /**
      * 等待到可读的时候
      */
-    void waitUntilReadble(){
+    void waitUntilReadable(){
         this.sync.acquireShared(1);
     }
 

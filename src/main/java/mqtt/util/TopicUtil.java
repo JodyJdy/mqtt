@@ -2,6 +2,8 @@
 
 package mqtt.util;
 
+import java.util.Objects;
+
 /**
  *
  * 主题 工具类
@@ -20,6 +22,9 @@ public class TopicUtil {
      * topic:  /a/b/c 匹配 subscribe:  /a/b/+，也匹配 /a/#
      */
     public static boolean isMatch(String subscribe, String topic) {
+        if(Objects.equals(subscribe,topic)){
+            return true;
+        }
         subscribe = subscribe.trim();
         topic = topic.trim();
         String[] subSplits = subscribe.split(LEVEL);
