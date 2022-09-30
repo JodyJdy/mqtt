@@ -33,13 +33,13 @@ public class MessageStorage {
      */
     private final ScheduledThreadPoolExecutor sync = new ScheduledThreadPoolExecutor(2);
     /**
-     * 主题不活跃时存活时间
+     * 主题不活跃时存活时间,60min
      */
-    private static final int TOPIC_DEAD_EXIST_TIME = 10 * 1000;
+    private static final int TOPIC_DEAD_EXIST_TIME = 60 * 60 * 1000;
     /**
      * 最大文件大小, 50 MB
      */
-    private static final int MAX_FILE_SIZE = 1024;//1024 * 1024 * 50;
+    private static final int MAX_FILE_SIZE = 1024 * 1024 * 50;
     /**
      * 消息存储使用的文件格式
      */
@@ -93,7 +93,6 @@ public class MessageStorage {
      * 用于读取对应的 消息文件
      */
     private final Map<Integer, RandomAccessFile> messageFileReaderMap = new ConcurrentHashMap<>();
-
 
     private final UserSessions userSessions;
 
