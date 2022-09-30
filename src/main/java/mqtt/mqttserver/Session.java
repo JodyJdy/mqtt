@@ -21,7 +21,7 @@ public class Session {
     private final MqttConnectVarHeader mqttConnectVarHeader;
     private final MqttConnectPayload mqttConnectPayload;
     /**
-     * 用户的订阅
+     * 用户的订阅，订阅的topic是包含通配符的
      */
     private final Map<String, MqttQoS> subscribes = new HashMap<>(2);
 
@@ -44,6 +44,9 @@ public class Session {
         return mqttConnectPayload;
     }
 
+    /**
+     * 添加订阅，如果有重复的会覆盖掉
+     */
     void addSubscribe(List<MqttTopic> topics){
         topics.forEach(topic ->subscribes.put(topic.getTopic(),topic.getQoS()));
     }
@@ -51,13 +54,16 @@ public class Session {
     void rmSubscribe(List<String> topics){
         topics.forEach(subscribes::remove);
     }
+    Set<String> getSubscribe(){
+        return subscribes.keySet();
+    }
 
     /**
-     * 判断发布的publish是否对应的上用户的订阅
+     * 判断发布的topic是否对应的上用户的订阅
      */
-    MqttQoS isMatch(String publish){
+    MqttQoS match(String topic){
         for(String key : subscribes.keySet()){
-            if(TopicUtil.isMatch(key,publish)){
+            if(TopicUtil.isMatch(key,topic)){
                 return subscribes.get(key);
             }
         }

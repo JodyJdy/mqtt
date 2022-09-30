@@ -43,7 +43,7 @@ public class MqttServer {
             //中转接收到的所有消息
             MessageQueue queue = new MessageQueue();
             //用于将消息写入文件
-            MessageStorage messageStorage = new MessageStorage();
+            MessageStorage messageStorage = new MessageStorage(userSessions);
             //用于写数据
             MessageWriter writer  = new MessageWriter(queue, messageStorage);
             //用于从文件读数据

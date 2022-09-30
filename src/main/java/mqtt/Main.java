@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
 //        File readerAccessFile = new File("store/" +"1." + "msg");
 //        if (!readerAccessFile.exists()) {
 //            FileUtils.touch(readerAccessFile);
@@ -30,14 +30,15 @@ public class Main {
 //        System.out.println(temp.readLong());
 //
         File indexFile = new File("/storage/index/mqtt.topic");
-        FileUtils.touch(indexFile);
-        Map<Integer,String> hashCode2Topic =new HashMap<>();
         RandomAccessFile randomAccessFile = new RandomAccessFile(indexFile,"rw");
-
-        StorageUtil.addTopic(randomAccessFile,"a");
-        StorageUtil.addTopic(randomAccessFile,"b");
-        StorageUtil.readTopic(randomAccessFile);
-        System.out.println();
+        randomAccessFile.seek(0);
+        randomAccessFile.writeLong(1L);
+        System.out.println(indexFile.lastModified());
+        Thread.sleep(1000);
+        randomAccessFile.writeLong(2L);
+        System.out.println(indexFile.lastModified());
+        Thread.sleep(1000);
+        System.out.println(indexFile.lastModified());
 
 
 //        System.out.println(temp2.readLong());

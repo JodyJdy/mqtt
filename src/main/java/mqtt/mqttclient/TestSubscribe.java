@@ -17,7 +17,7 @@ public class TestSubscribe {
             System.out.println("收到消息:" + x);
         });
 
-        Thread.sleep(60000);
+        Thread.sleep(10000);
         System.out.println("取消订阅");
 
         publisher.sendUnsubscribe("hello");

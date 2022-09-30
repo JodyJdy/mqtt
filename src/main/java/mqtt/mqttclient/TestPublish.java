@@ -26,10 +26,9 @@ public class TestPublish {
         Thread.sleep(1000);
 
         long start = System.currentTimeMillis();
-        for(int i=0;i<3;i++){
+        for(int i=0;i<6;i++){
             publishResults.add(publisher.publish(message));
         }
-        publishResults.get(0).waitForAck();
         publishResults.forEach(PublishResult::waitForAck);
         long end = System.currentTimeMillis();
         System.out.println(end - start);

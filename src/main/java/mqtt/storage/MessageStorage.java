@@ -3,14 +3,19 @@
 package mqtt.storage;
 
 
+import mqtt.mqttserver.Receiver;
+import mqtt.mqttserver.UserSessions;
 import mqtt.util.StorageUtil;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,14 +27,19 @@ import java.util.concurrent.TimeUnit;
  * 消息存储
  */
 public class MessageStorage {
+    private static final Logger logger = LoggerFactory.getLogger(MessageStorage.class);
     /**
      * 执行文件刷盘的定时任务
      */
-    private final ScheduledThreadPoolExecutor sync = new ScheduledThreadPoolExecutor(1);
+    private final ScheduledThreadPoolExecutor sync = new ScheduledThreadPoolExecutor(2);
+    /**
+     * 主题不活跃时存活时间
+     */
+    private static final int TOPIC_DEAD_EXIST_TIME = 10 * 1000;
     /**
      * 最大文件大小, 50 MB
      */
-    private static final int MAX_FILE_SIZE = 1024 * 1024 * 50;
+    private static final int MAX_FILE_SIZE = 1024;//1024 * 1024 * 50;
     /**
      * 消息存储使用的文件格式
      */
@@ -49,7 +59,7 @@ public class MessageStorage {
     /**
      * 文件存储根路径
      */
-     final static String ROOT_PATH = "store/";
+    final static String ROOT_PATH = "store/";
     /**
      * 文件索引路径
      */
@@ -74,13 +84,21 @@ public class MessageStorage {
     /**
      * topic 的hashCode到topic的映射
      */
-    private final Map<Integer, String> hashCode2Topic = new ConcurrentHashMap<>();
+    private final Map<Integer, String> topicMap = new ConcurrentHashMap<>();
     /**
      * 存储topic->indexFile 的映射
      */
-    private final Map<String,IndexFileWriterReader> topic2IndexFileWriterReader = new ConcurrentHashMap<>();
+    private final Map<String, IndexFileWriterReader> topic2IndexFile = new ConcurrentHashMap<>();
+    /**
+     * 用于读取对应的 消息文件
+     */
+    private final Map<Integer, RandomAccessFile> messageFileReaderMap = new ConcurrentHashMap<>();
 
-    public MessageStorage() throws IOException {
+
+    private final UserSessions userSessions;
+
+    public MessageStorage(UserSessions userSessions) throws IOException {
+        this.userSessions = userSessions;
         //获取文件写指针
         File pointer = new File(ROOT_PATH + FILE_POINTER_NAME);
         if (!pointer.exists()) {
@@ -99,50 +117,80 @@ public class MessageStorage {
         }
         RandomAccessFile temp = new RandomAccessFile(writerAccessFile, "rw");
         writer = temp.getChannel().map(FileChannel.MapMode.READ_WRITE, messageFileWriterPointer.getWritePos(), MAX_FILE_SIZE);
-        initIndexSet();
+        loadIndexFromFile();
         syncTask();
     }
 
     /**
      * 初始化索引相关
      */
-    private void initIndexSet() throws IOException {
-        File indexFile = new File(INDEX_PATH + TOPIC_SET);
-        if(!indexFile.exists()){
-            FileUtils.touch(indexFile);
-        }
-        //用于读写 mqtt.topic文件
-        topicFileAccess = new RandomAccessFile(indexFile, "rw");
-        //获取所有主题
-        List<TopicIndexFileReaderPointer> topics = StorageUtil.readTopic(topicFileAccess);
-        //放入map中
-        for(TopicIndexFileReaderPointer topic : topics){
-            addTopic2Map(topic.getTopic(),topic.getReadPos(),topic.getTopicPos());
+    private void loadIndexFromFile() {
+        try {
+            File indexFile = new File(INDEX_PATH + TOPIC_SET);
+            if (!indexFile.exists()) {
+                FileUtils.touch(indexFile);
+            }
+            //用于读写 mqtt.topic文件
+            topicFileAccess = new RandomAccessFile(indexFile, "rw");
+            //获取所有主题
+            List<TopicIndexFileReaderPointer> topics = StorageUtil.readTopic(topicFileAccess);
+            //放入map中
+            for (TopicIndexFileReaderPointer topic : topics) {
+                addTopic2Map(topic);
+            }
+        } catch (Exception e) {
+           logger.error("初始化索引文件失败",e);
         }
     }
-    private boolean addTopic2Map(String topic,long readPos,long topicPos) throws IOException {
-        if(hashCode2Topic.containsKey(topic.hashCode())){
+
+    /**
+     * 使用默认参数添加主题到 map中
+     */
+    private synchronized boolean addTopic2Map(String topic) {
+        TopicIndexFileReaderPointer topicPointer;
+        try {
+            topicPointer = new TopicIndexFileReaderPointer(topic, 0L, topicFileAccess.length(), messageFileWriterPointer.getWriteFile());
+        } catch (IOException e) {
+            logger.error("添加主题失败", e);
             return false;
         }
-        hashCode2Topic.put(topic.hashCode(), topic);
-        File indexFile = new File(INDEX_PATH + topic.hashCode() + INDEX_TYPE);
-        if(!indexFile.exists()){
-            FileUtils.touch(indexFile);
+        return addTopic2Map(topicPointer);
+    }
+
+    /**
+     * 使用从文件中读取的参数， 添加主题到map中
+     */
+    private synchronized boolean addTopic2Map(TopicIndexFileReaderPointer topicPointer) {
+        String topic = topicPointer.getTopic();
+        //添加到userSessions中的缓冲
+        userSessions.addUsingTopic(topic);
+        int hashCode = topicPointer.getTopic().hashCode();
+        if (topicMap.containsKey(hashCode)) {
+            return false;
         }
-        RandomAccessFile randomAccessFile = new RandomAccessFile(indexFile,"rw");
-        topic2IndexFileWriterReader.put(topic,new IndexFileWriterReader(topic,randomAccessFile,readPos,topicPos));
+        topicMap.put(hashCode, topic);
+        File indexFile = new File(INDEX_PATH + hashCode + INDEX_TYPE);
+        if (!indexFile.exists()) {
+            try {
+                FileUtils.touch(indexFile);
+            } catch (IOException e) {
+                logger.error("主题索引文件创建失败", e);
+                return false;
+            }
+        }
+        topic2IndexFile.put(topic, new IndexFileWriterReader(topic, indexFile, topicPointer.getReadPos(), topicPointer.getTopicPos(), topicPointer.getReadFileIndex()
+                , messageFileWriterPointer.getWriteFile()));
         return true;
     }
 
     /**
      * 添加主题,
+     *
      * @param topic 名称
-     * @param readPos 主题索引文件的读取位置
-     * @param topicPos 主题在 mqtt.topic中存储的位置
      */
-    public synchronized void  addTopic(String topic,long readPos,long topicPos) throws IOException {
-        if(addTopic2Map(topic,readPos,topicPos)) {
-             StorageUtil.addTopic(topicFileAccess, topic);
+    public synchronized void createTopic(String topic) {
+        if (addTopic2Map(topic)) {
+            StorageUtil.addTopic(topicFileAccess, topic, messageFileWriterPointer.getWriteFile());
         }
     }
 
@@ -152,7 +200,9 @@ public class MessageStorage {
         //将 内存中的数据刷盘,5s一次
         sync.scheduleAtFixedRate(() -> writer.force(), 0, 5, TimeUnit.SECONDS);
         //定时更新 主题索引文件的读取位置
-        sync.scheduleAtFixedRate(this::updateIndexFileReadPos,1,1,TimeUnit.SECONDS);
+        sync.scheduleAtFixedRate(this::updateIndexFileReadPos, 1, 1, TimeUnit.SECONDS);
+        //定时删除 不活跃的topic
+        sync.scheduleAtFixedRate(this::deleteTopics, 1, 10, TimeUnit.SECONDS);
     }
 
     /**
@@ -161,14 +211,21 @@ public class MessageStorage {
     void writeMessage(Message msg) throws IOException {
         StoredMessage storedMessage = Message.transToStoredMessage(msg);
         long pos = writeMessage(storedMessage);
-        String topic = msg.getTopic();
+        storeMessagePos(pos, msg);
+    }
+
+    /**
+     * 存储消息位置
+     */
+    void storeMessagePos(long pos, Message message) {
+        String topic = message.getTopic();
         //主题不存在，创建主题
-        if (!hashCode2Topic.containsKey(topic.hashCode())) {
+        if (!topicMap.containsKey(topic.hashCode())) {
             //新创建的主题，一定在mqtt.topic文件的尾部
-            addTopic(topic,0L,topicFileAccess.length());
+            createTopic(topic);
         }
         //将消息位置，记录在 主题对应的索引文件里面
-        topic2IndexFileWriterReader.get(topic).writeMessagePos(pos, messageFileWriterPointer.getWriteFile());
+        topic2IndexFile.get(topic).writeMessagePos(pos, messageFileWriterPointer.getWriteFile());
     }
 
     /**
@@ -192,9 +249,22 @@ public class MessageStorage {
      * 从文件里面读取消息
      */
     Message readMessage(String topic) throws IOException {
-        IndexFileWriterReader indexFileWriterReader = topic2IndexFileWriterReader.get(topic);
-        if(indexFileWriterReader.couldRead()){
-            return indexFileWriterReader.readMessage();
+        IndexFileWriterReader indexFileWriterReader = topic2IndexFile.get(topic);
+        if (indexFileWriterReader == null) {
+            return null;
+        }
+        if (indexFileWriterReader.couldRead()) {
+            MessagePos msgPos = indexFileWriterReader.readMessagePos();
+            if (msgPos == null) {
+                return null;
+            }
+            RandomAccessFile reader = messageFileReaderMap.get(msgPos.getFileIndex());
+            if (reader == null) {
+                reader = new RandomAccessFile(ROOT_PATH + msgPos.getFileIndex() + MSG_TYPE, "r");
+                messageFileReaderMap.put(msgPos.getFileIndex(), reader);
+            }
+            reader.seek(msgPos.getPos());
+            return StorageUtil.readMessage(reader);
         }
         return null;
     }
@@ -219,12 +289,13 @@ public class MessageStorage {
     /**
      * 更新 每个索引文件 读取的下标
      */
-    private void updateIndexFileReadPos(){
-        topic2IndexFileWriterReader.forEach(
+    private synchronized void updateIndexFileReadPos() {
+        topic2IndexFile.forEach(
                 (s, indexFileWriterReader) -> {
                     try {
                         topicFileAccess.seek(indexFileWriterReader.getTopicPos());
                         topicFileAccess.writeLong(indexFileWriterReader.getReadPos());
+                        topicFileAccess.writeInt(indexFileWriterReader.getReadFileIndex());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -248,17 +319,55 @@ public class MessageStorage {
     }
 
     /**
-     * 读文件写指针
+     * 读取文件写指针
      */
     private MessageFileWriterPointer readFileWriterPointer() throws IOException {
         messageFilePointerAccess.seek(0);
         return new MessageFileWriterPointer(messageFilePointerAccess.readLong(), messageFilePointerAccess.readInt());
     }
+
+
     /**
-     * 获取所有在使用中的topic
+     * 删除不在使用的topic
      */
-    public Set<String> topicSet(){
-        return topic2IndexFileWriterReader.keySet();
+    private synchronized void deleteTopics() {
+        Set<String> deletes = new HashSet<>();
+        //获取不再写入的topic
+        topic2IndexFile.forEach((k, indexFileWriterReader) -> {
+            if (indexFileWriterReader.read2End() && System.currentTimeMillis() - indexFileWriterReader.lastModifyTime() > TOPIC_DEAD_EXIST_TIME) {
+                deletes.add(k);
+            }
+        });
+        //过滤掉还在使用中的topic
+        deletes.removeIf(d -> {
+            Set<Receiver> r = userSessions.getReceiver(d);
+            return r != null && !r.isEmpty();
+        });
+        List<TopicIndexFileReaderPointer> topics = StorageUtil.readTopic(topicFileAccess);
+        int before = topics.size();
+        topics.removeIf(o -> deletes.contains(o.getTopic()));
+        //什么都不需要做
+        if(before == topics.size()){
+            return;
+        }
+        //写入文件中
+        StorageUtil.writeTopic(topicFileAccess, topics);
+        //有必要全部清空，重建索引文件
+        topicMap.clear();
+        deletes.forEach(d -> {
+            logger.info("删除订阅:{}", d);
+            topic2IndexFile.get(d).close();
+            //删除订阅对应的文件
+            File indexFile = new File(INDEX_PATH + d.hashCode() + INDEX_TYPE);
+            try {
+                FileUtils.delete(indexFile);
+            } catch (IOException e) {
+                logger.error("删除索引文件失败",e);
+            }
+        });
+        topic2IndexFile.clear();
+        loadIndexFromFile();
+        userSessions.deleteUsingTopics(deletes);
     }
 
 }
