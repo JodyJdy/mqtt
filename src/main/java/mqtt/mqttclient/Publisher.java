@@ -19,7 +19,7 @@ public class Publisher {
     /**
      * 报文id
      */
-    private AtomicLong packetId = new AtomicLong(1);
+    private final AtomicLong packetId = new AtomicLong(1);
 
     private final Ack ack;
 
@@ -32,7 +32,7 @@ public class Publisher {
     /**
      * 记录订阅对应的 MessageListener
      */
-    private Map<String,MessageListener> subMap = new ConcurrentHashMap<>(2);
+    private final Map<String,MessageListener> subMap = new ConcurrentHashMap<>(2);
 
 
     Publisher(Channel channel, Ack ack) {

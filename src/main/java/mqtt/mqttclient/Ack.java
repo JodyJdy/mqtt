@@ -14,7 +14,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 public class Ack {
     private final Sync sync;
-    private  Set<Integer> set;
+    private final Set<Integer> set;
     static class Sync extends AbstractQueuedSynchronizer {
         Set<Integer> set;
         Sync(Set<Integer> set) {

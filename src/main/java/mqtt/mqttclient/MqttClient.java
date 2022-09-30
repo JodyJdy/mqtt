@@ -10,6 +10,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import mqtt.codec.MqttClientMessageDecoder;
 import mqtt.codec.MqttDecoder;
 import mqtt.codec.MqttEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -17,9 +19,8 @@ import java.util.concurrent.TimeUnit;
 /**
  *mqtt 客户端
  **/
-
 public class MqttClient {
-
+    private static final Logger logger = LoggerFactory.getLogger(MqttClient.class);
     private final int port;
     private final String address;
     private Bootstrap bootstrap;
@@ -28,6 +29,7 @@ public class MqttClient {
     public MqttClient(int port, String address) {
         this.port = port;
         this.address = address;
+        logger.info("准备连接到服务端，端口:{}, 地址:{}",port,address);
         createBootstrap();
     }
 
@@ -63,7 +65,7 @@ public class MqttClient {
 
             PublishResult connResult = publisher.sendConn(options);
             connResult.waitForAck();
-            System.out.println("连接成功");
+            logger.info("连接成功");
             //启动一个定时心跳的任务
             final ScheduledThreadPoolExecutor beat = new ScheduledThreadPoolExecutor(1, r -> {
                 Thread t = new Thread(r);
@@ -79,7 +81,7 @@ public class MqttClient {
             });
             return publisher;
         } catch (InterruptedException e) {
-            System.out.println("连接失败");
+            logger.error("连接失败");
         }
         return null;
     }

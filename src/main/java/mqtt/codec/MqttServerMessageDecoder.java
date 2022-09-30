@@ -17,6 +17,8 @@ import mqtt.mqttserver.UserSessions;
 import mqtt.storage.Message;
 import mqtt.storage.MessageQueue;
 import mqtt.util.MqttMessageUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
  * 服务端 消息解码器
  **/
 public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMessage> {
+    private static final Logger logger = LoggerFactory.getLogger(MqttServerMessageDecoder.class);
     /**
      * 用户会话信息
      */
@@ -84,6 +87,7 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
         MqttConnectPayload payload = (MqttConnectPayload) msg.payload();
         Channel channel = ctx.channel();
         channel.attr(ID).set(payload.getClientIdentifier());
+        logger.info("接收到客户端的连接，id:{},username:{}",payload.getClientIdentifier(),payload.getUserName());
         userSessions.addUser(new Session(channel, connectVarHeader, payload));
         return MqttMessageUtil.connAck();
     }
@@ -132,8 +136,8 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
     private MqttMessage subscribeReturn(MqttMessage mqttMessage, ChannelHandlerContext ctx) {
         MqttFixedHeader fixedHeader = mqttMessage.fixedHeader();
         //获取用户标识符
-        Channel chnnel = ctx.channel();
-        String id = chnnel.attr(ID).get();
+        Channel channel = ctx.channel();
+        String id = channel.attr(ID).get();
 
         if (fixedHeader.messageType() == MqttMessageType.SUBSCRIBE) {
             MqttSubTopicVarHeader varHeader = (MqttSubTopicVarHeader) mqttMessage.variableHeader();
@@ -169,6 +173,7 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
      */
     private void disconnect(Channel channel) {
         String id = channel.attr(ID).get();
+        logger.info("客户端 id:{} 断开·连接",id);
         userSessions.rmUser(id);
         channel.close();
     }
@@ -176,6 +181,7 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)  {
         String id = ctx.channel().attr(ID).get();
+        logger.info("客户端 id:{} 异常断开连接",id);
         userSessions.rmUser(id);
         ctx.channel().close();
     }

@@ -14,6 +14,8 @@ import mqtt.codec.MqttDecoder;
 import mqtt.codec.MqttEncoder;
 import mqtt.codec.MqttServerMessageDecoder;
 import mqtt.storage.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -21,6 +23,7 @@ import mqtt.storage.*;
  **/
 
 public class MqttServer {
+    private static final Logger logger = LoggerFactory.getLogger(MqttServer.class);
     private final int port;
 
     public MqttServer(int port) {
@@ -31,6 +34,7 @@ public class MqttServer {
         new MqttServer(9999).start();
     }
     private void start() throws Exception{
+        logger.info("启动服务端，监听端口:{}",port);
         EventLoopGroup bossGroup = new NioEventLoopGroup(2);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -57,6 +61,7 @@ public class MqttServer {
                         }
                     });
             // 启动消息处理
+            logger.info("启动消息处理");
             writer.start();
             reader.start();
             ChannelFuture cf = bootstrap.bind(port).sync();
