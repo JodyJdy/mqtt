@@ -13,8 +13,14 @@ public class TestSubscribe {
         options.setUserName("aa");
         options.setPassword("bb".getBytes());
         Publisher publisher = mqttClient.connect(options);
+        final AtomicInteger atomicInteger = new AtomicInteger(0);
+        long start = System.currentTimeMillis();
+
         publisher.sendSubscribe("hello", MqttQoS.EXACTLY_ONCE.value(), x->{
-            System.out.println("收到消息:" + x);
+            int l = atomicInteger.getAndIncrement();
+            if(l % 10000 ==0){
+                System.out.println(System.currentTimeMillis());
+            }
         });
     }
 }

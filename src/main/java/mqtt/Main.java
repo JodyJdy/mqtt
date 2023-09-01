@@ -3,9 +3,10 @@ package mqtt;
 import mqtt.util.StorageUtil;
 import org.apache.commons.io.FileUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,16 +32,27 @@ public class Main {
 //
         File indexFile = new File("/storage/index/mqtt.topic");
         FileUtils.touch(indexFile);
-        Map<Integer,String> hashCode2Topic =new HashMap<>();
-        RandomAccessFile randomAccessFile = new RandomAccessFile(indexFile,"rw");
+        FileOutputStream fos = new FileOutputStream(indexFile);
+        for(int i =0;i<1000;i++){
+            fos.write("hello world".getBytes());
+        }
+        fos.close();
+        MappedByteBuffer ma= new RandomAccessFile(indexFile,"r").getChannel().map(FileChannel.MapMode.READ_ONLY,0,1024);
 
-        StorageUtil.addTopic(randomAccessFile,"a");
-        StorageUtil.addTopic(randomAccessFile,"b");
-        StorageUtil.readTopic(randomAccessFile);
-        System.out.println();
-
-
+        MappedByteBuffer mb= new RandomAccessFile(indexFile,"rw").getChannel().map(FileChannel.MapMode.READ_WRITE,0,1024);
 //        System.out.println(temp2.readLong());
+
+        mb.position(0);
+        byte[] bs = "xxxx".getBytes(StandardCharsets.UTF_8);
+        mb.put(bs);
+        mb.position(100);
+
+        ma.position(0);
+        byte[] xx = new byte[bs.length];
+        ma.get(xx);
+
+
+        System.out.println(new String(xx));
 
 
 

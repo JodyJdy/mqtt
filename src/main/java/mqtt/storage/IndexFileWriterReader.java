@@ -1,10 +1,12 @@
 package mqtt.storage;
 
+import mqtt.util.FileUtil;
+import mqtt.util.Pair;
 import mqtt.util.StorageUtil;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.concurrent.*;
 
 /**
  * 读写 topic 对应的 索引文件
@@ -15,14 +17,13 @@ public class IndexFileWriterReader {
      */
     private String topic;
     /**
-     *主题在索引集合中的位置
+     * 索引文件读取进度
      */
-    private final long topicPos;
-    /**
-     * 读指针
-     */
-    private volatile long readPos;
+    private final IndexFileReadPointer indexFileReadPointer;
 
+    public IndexFileReadPointer getIndexFileReadPointer() {
+        return indexFileReadPointer;
+    }
     /**
      *随机读写
      */
@@ -32,25 +33,22 @@ public class IndexFileWriterReader {
      * 当前读取的 消息文件的索引
      */
     private int fileIndex = -1;
-    /**
-     * 下次可以读取消息的时间
-     */
-    private long couldReadMessageTime = -1;
 
-    public long getTopicPos() {
-        return topicPos;
-    }
+
+    private final ConcurrentLinkedQueue<Pair<Long, MessagePos>> messagePosQueue = new ConcurrentLinkedQueue<>();
+
+
+    private BlockingBool waitMessage = new  BlockingBool();
 
     /**
      * 存放消息的文件
      */
     private RandomAccessFile messageFile;
 
-    public IndexFileWriterReader(String topic,RandomAccessFile randomAccessFile,long readPos,long topicPos) {
+    public IndexFileWriterReader(String topic, RandomAccessFile randomAccessFile, IndexFileReadPointer indexFileReadPointer) {
         this.topic = topic;
-        this.readPos = readPos;
         this.indexFile = randomAccessFile;
-        this.topicPos = topicPos;
+        this.indexFileReadPointer = indexFileReadPointer;
     }
 
     public String getTopic() {
@@ -61,49 +59,84 @@ public class IndexFileWriterReader {
         this.topic = topic;
     }
 
-    public long getReadPos() {
-        return readPos;
-    }
-
-    public void setReadPos(long readPos) {
-        this.readPos = readPos;
-    }
-
-
     public synchronized void writeMessagePos(long messagePos,int fileIndex){
         try {
             //总是追加到最后
             indexFile.seek(indexFile.length());
             indexFile.writeLong(messagePos);
             indexFile.writeInt(fileIndex);
+            //如果在等待，进行唤醒
+            waitMessage.setTrue();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    public boolean couldRead(){
-        return System.currentTimeMillis() > couldReadMessageTime;
-    }
     public synchronized Message readMessage(){
         try {
-            //此时无数据
-            if(readPos == indexFile.length()){
-                couldReadMessageTime = System.currentTimeMillis() + 1000L;
-                return null;
+            if (messagePosQueue.isEmpty()) {
+                //尝试进行读取,读取不到进行阻塞
+                tryRead();
             }
-            indexFile.seek(readPos);
-            long messagePos = indexFile.readLong();
-            int fileIndex = indexFile.readInt();
-            readPos = indexFile.getFilePointer();
-            if(fileIndex != this.fileIndex){
-                this.fileIndex = fileIndex;
-                messageFile = new RandomAccessFile(new File(MessageStorage.ROOT_PATH + fileIndex +MessageStorage.MSG_TYPE),"r");
-            }
-            messageFile.seek(messagePos);
+            Pair<Long,MessagePos> posPair = messagePosQueue.poll();
+            MessagePos pos = posPair.getV();
+            // 更新索引读取进度
+            indexFileReadPointer.updateReadPos(posPair.getK() + FileUtil.getMessageIndexSize());
+            checkFileIndex(pos);
+            messageFile.seek(pos.getReadPos());
             return StorageUtil.readMessage(messageFile);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        couldReadMessageTime = System.currentTimeMillis() + 1000L;
         return null;
+    }
+    private void checkFileIndex( MessagePos pos){
+        try {
+            if (pos.fileIndex != this.fileIndex) {
+                this.fileIndex = pos.fileIndex;
+                messageFile = new RandomAccessFile(FileUtil.getMessageFile(fileIndex), "r");
+            }
+        } catch (Exception e) {
+            System.out.println("读取消息文件失败:"+e);
+            System.exit(-2);
+        }
+    }
+    private void tryRead() {
+        try {
+            //如果没有消息可以读取，进行阻塞
+            if (indexFileReadPointer.getReadPos() == indexFile.length()) {
+                // 如果读取失败，进行等待
+                waitMessage.waitTrue();
+            }
+            // 进行读取
+            long curPos = indexFileReadPointer.getReadPos();
+            long length = indexFile.length();
+            //一次最多读取 100条
+            indexFile.seek(curPos);
+            int count = 0;
+            while (curPos < length && count < 100) {
+                MessagePos messagePos = new MessagePos(indexFile.readLong(), indexFile.readInt());
+                messagePosQueue.add(Pair.create(curPos,messagePos));
+                count++;
+                curPos+=FileUtil.getMessageIndexSize();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public static class MessagePos{
+
+        private final long readPos;
+        private final int fileIndex;
+
+        public long getReadPos() {
+            return readPos;
+        }
+
+        public MessagePos(long readPos, int fileIndex) {
+            this.readPos = readPos;
+            this.fileIndex = fileIndex;
+        }
     }
 }
