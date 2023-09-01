@@ -9,6 +9,17 @@ import java.io.File;
  * @data 2023/9/1 16:05
  */
 public class FileUtil {
+
+    /**
+     * 磁盘页大小 4kb  4096 byte
+     */
+    public static final int PAGE_SIZE = 4 * 1024;
+
+
+    /**
+     * 一次性读取的 消息索引的 数量
+     */
+    public static final int READ_MESSAGE_INDEX =  (4 * 1024) - (4 * 1024)% getMessageIndexSize();
     /**
      * 最大文件大小, 50 MB
      */

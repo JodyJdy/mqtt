@@ -17,10 +17,11 @@ public class TestSubscribe {
         long start = System.currentTimeMillis();
 
         publisher.sendSubscribe("hello", MqttQoS.EXACTLY_ONCE.value(), x->{
-            int l = atomicInteger.getAndIncrement();
-            if(l % 10000 ==0){
-                System.out.println(System.currentTimeMillis());
-            }
+//            int l = atomicInteger.getAndIncrement();
+//            if(l % 100000 ==0){
+//                System.out.println(System.currentTimeMillis() - start);
+//            }
+            System.out.println(x);
         });
     }
 }

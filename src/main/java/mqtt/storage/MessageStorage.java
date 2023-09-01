@@ -91,9 +91,8 @@ public class MessageStorage {
         if (!indexFile.exists()) {
             FileUtils.touch(indexFile);
         }
-        RandomAccessFile randomAccessFile = new RandomAccessFile(indexFile, "rw");
         IndexFileReadPointer indexFileReadPointer = new IndexFileReadPointer(getIndexFileReadPosFile(topic));
-        topic2IndexFileWriterReader.put(topic, new IndexFileWriterReader(topic, randomAccessFile, indexFileReadPointer));
+        topic2IndexFileWriterReader.put(topic, new IndexFileWriterReader(topic, indexFile, indexFileReadPointer));
         return true;
     }
 

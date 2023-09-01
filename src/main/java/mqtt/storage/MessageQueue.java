@@ -2,18 +2,20 @@
 
 package mqtt.storage;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
 /**
  * 消息中转队列
  */
 public class MessageQueue {
-    private final BlockingQueueWithoutLock<Message> queue = new BlockingQueueWithoutLock<>();
+    private final BlockingQueue<Message> queue = new LinkedBlockingQueue<>();
     public Message getMessage(){
         try {
             return queue.take();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            return null;
         }
-        return null;
     }
     public void putMessage(Message msg){
         queue.add(msg);

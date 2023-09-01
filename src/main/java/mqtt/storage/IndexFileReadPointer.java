@@ -20,6 +20,10 @@ public class IndexFileReadPointer {
      */
     private final File file;
     /**
+     * 索引文件 写入最大位置
+     */
+    private volatile long writeMaxPos = 0;
+    /**
      * 索引文件下次应该读的指针
      */
     private volatile long readPos = 0;
@@ -30,6 +34,7 @@ public class IndexFileReadPointer {
             if (file.exists()) {
                 RandomAccessFile ros = new RandomAccessFile(file, "rw");
                 readPos = ros.readLong();
+                writeMaxPos = ros.readLong();
                 ros.close();
             } else {
                 FileUtils.touch(file);
@@ -45,6 +50,14 @@ public class IndexFileReadPointer {
     }
 
 
+    public long getWriteMaxPos() {
+        return writeMaxPos;
+    }
+
+    public void updateWriteMaxPos(Long pos) {
+        writeMaxPos = pos;
+    }
+
     /**
      * 更新读取进度
      */
@@ -52,11 +65,13 @@ public class IndexFileReadPointer {
         this.readPos = pos;
     }
 
+
     public void flush() {
         try {
             RandomAccessFile ros = new RandomAccessFile(file, "rw");
             ros.seek(0);
             ros.writeLong(readPos);
+            ros.writeLong(writeMaxPos);
             ros.close();
         } catch (Exception e) {
             System.out.println("更新主题索引读取进度文件异常");
