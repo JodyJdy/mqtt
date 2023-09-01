@@ -33,13 +33,25 @@ public class BlockingBool {
         }
     }
     public void setTrue(){
+        if (stop) {
+            return;
+        }
         sync.releaseShared(1);
+    }
+    private boolean stop = false;
+    public void stopUse(){
+        //唤醒阻塞的线程
+        setTrue();
+        stop = true;
     }
 
     /**
      * 等待为真
      */
     public void waitTrue(){
+        if (stop) {
+            return;
+        }
         sync.acquireShared(1);
     }
 

@@ -7,7 +7,6 @@ import mqtt.enums.MqttQoS;
 import mqtt.protocol.payload.MqttConnectPayload;
 import mqtt.protocol.MqttTopic;
 import mqtt.protocol.varheader.MqttConnectVarHeader;
-import mqtt.util.TopicUtil;
 
 import java.util.*;
 
@@ -53,15 +52,10 @@ public class Session {
     }
 
     /**
-     * 判断发布的publish是否对应的上用户的订阅
+     * 判断topic 是否对应的上用户的订阅
      */
-    MqttQoS isMatch(String publish){
-        for(String key : subscribes.keySet()){
-            if(TopicUtil.isMatch(key,publish)){
-                return subscribes.get(key);
-            }
-        }
-        return null;
+    MqttQoS getQos(String topic){
+        return subscribes.get(topic);
     }
 
 

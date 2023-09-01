@@ -150,9 +150,13 @@ public class MessageStorage {
     /**
      * 从文件里面读取消息
      */
-    Message readMessage(String topic) {
+    public Message readMessage(String topic) {
         IndexFileWriterReader indexFileWriterReader = topic2IndexFileWriterReader.get(topic);
         return indexFileWriterReader.readMessage();
+    }
+
+    public void stopRead(String topic) {
+        topic2IndexFileWriterReader.get(topic).stopRead();
     }
 
     /**

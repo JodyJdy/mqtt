@@ -42,8 +42,9 @@ public class MqttServer {
             MessageStorage messageStorage = new MessageStorage();
             //用于写数据
             MessageWriter writer  = new MessageWriter(queue, messageStorage);
-            //用于从文件读数据
-            MessageFileReader reader = new MessageFileReader(messageStorage, userSessions);
+            //用于读数据并发送
+            TopicMessageSender topicMessageSender = new TopicMessageSender(messageStorage, userSessions);
+            userSessions.setTopicMessageSender(topicMessageSender);
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -58,7 +59,6 @@ public class MqttServer {
                     });
             // 启动消息处理
             writer.start();
-            reader.start();
             ChannelFuture cf = bootstrap.bind(port).sync();
             cf.channel().closeFuture().sync();
         } finally {

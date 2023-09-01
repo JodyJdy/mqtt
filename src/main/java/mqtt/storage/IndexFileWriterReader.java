@@ -134,6 +134,9 @@ public class IndexFileWriterReader {
             if (indexFileReadPointer.getReadPos() + FileUtil.getMessageIndexSize() > indexFileReadPointer.getWriteMaxPos()) {
                 waitMessage.waitTrue();
             }
+            if (stop) {
+                return;
+            }
             //最大可读位置
             long maxReadPos =indexFileReadPointer.getWriteMaxPos();
             // 进行读取
@@ -168,5 +171,13 @@ public class IndexFileWriterReader {
             this.readPos = readPos;
             this.fileIndex = fileIndex;
         }
+    }
+
+    private volatile boolean stop =false;
+    public void stopRead(){
+        //唤醒停止的线程，并停止使用
+        waitMessage.stopUse();
+        //设置停止标记
+        stop = true;
     }
 }

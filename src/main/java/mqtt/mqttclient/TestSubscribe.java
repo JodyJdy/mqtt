@@ -5,7 +5,7 @@ import mqtt.enums.MqttQoS;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestSubscribe {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         MqttClient mqttClient = new MqttClient(9999,"localhost");
 
         MqttConnectOptions options = new MqttConnectOptions();
@@ -23,5 +23,7 @@ public class TestSubscribe {
 //            }
             System.out.println(x);
         });
+        Thread.sleep(5*1000);
+        publisher.sendUnsubscribe("hello");
     }
 }

@@ -7,6 +7,7 @@ import mqtt.protocol.payload.MqttConnectPayload;
 import mqtt.protocol.MqttTopic;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  *
@@ -19,10 +20,17 @@ public class UserSessions {
      */
     private final Map<String, Session> idToUser = new HashMap<>(2);
     /**
-     * 发布 到订阅用户之间的缓存,避免每次都进行查询
+     *  topic 到订阅用户之间的缓存,避免每次都进行查询
      */
-    private Map<String,Set<Receiver>> publishToUser = new HashMap<>(2);
+    private Map<String,Set<Receiver>> topicSubscriberMap = new ConcurrentHashMap<>();
 
+
+    private TopicMessageSender topicMessageSender;
+
+
+    public void setTopicMessageSender(TopicMessageSender topicMessageSender) {
+        this.topicMessageSender = topicMessageSender;
+    }
 
     public Session getUser(String id){
         return idToUser.get(id);
@@ -40,7 +48,7 @@ public class UserSessions {
     public synchronized void rmUser(String id){
         idToUser.remove(id);
         //重置缓存
-        publishToUser = new HashMap<>(2);
+        topicSubscriberMap = new HashMap<>(2);
     }
     /**
      * 添加订阅
@@ -48,8 +56,20 @@ public class UserSessions {
     public synchronized void addSub(String id, List<MqttTopic> subs){
         Session session = idToUser.get(id);
         session.addSubscribe(subs);
-        //重置缓存
-        publishToUser = new HashMap<>(2);
+        List<String> newTask = new ArrayList<>();
+        for (MqttTopic mqttTopic : subs) {
+            String topic = mqttTopic.getTopic();
+            MqttQoS qos = session.getQos(topic);
+            Receiver receiver = new Receiver(id,qos);
+            //进行初始化
+            if (!topicSubscriberMap.containsKey(topic)) {
+                //建立相关任务
+                newTask.add(topic);
+                topicSubscriberMap.put(topic,Collections.synchronizedSet(new HashSet<>()));
+            }
+            topicSubscriberMap.get(topic).add(receiver);
+        }
+        newTask.forEach(topicMessageSender::addTask);
     }
     /**
      * 删除订阅
@@ -57,26 +77,28 @@ public class UserSessions {
     public synchronized void rmSub(String id, List<String> subs){
         Session session = idToUser.get(id);
         session.rmSubscribe(subs);
-        //重置缓存
-        publishToUser = new HashMap<>(2);
-
+        for(String  topic : subs) {
+            //删除订阅
+            if (topicSubscriberMap.containsKey(topic)) {
+                Set<Receiver> set = topicSubscriberMap.get(topic);
+                set.removeIf(r -> Objects.equals(r.getId(), id));
+                //清空
+                if (set.isEmpty()) {
+                    topicSubscriberMap.remove(topic);
+                    //关闭相关任务
+                    topicMessageSender.removeTask(topic);
+                }
+            }
+        }
     }
     /**
      * 根据发布的topic 获取对应订阅用户
      */
-    public  Set<Receiver> getReceiver(String publish){
-        if(publishToUser.containsKey(publish)){
-            return publishToUser.get(publish);
+    public  Set<Receiver> getReceiver(String topic){
+        if(topicSubscriberMap.containsKey(topic)){
+            return topicSubscriberMap.get(topic);
         }
-        Set<Receiver> result = new HashSet<>();
-        idToUser.forEach((key,value)->{
-            MqttQoS qos = value.isMatch(publish);
-            if(qos != null){
-                result.add(new Receiver(key,qos));
-            }
-        });
-        publishToUser.put(publish,result);
-        return result;
+        return new HashSet<>();
     }
 
 }
