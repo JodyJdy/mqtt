@@ -3,19 +3,20 @@
 package mqtt.storage;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 消息中转队列
  */
 public class MessageQueue {
-    private final BlockingQueue<Message> queue = new LinkedBlockingQueue<>();
+    private final ConcurrentLinkedQueue<Message> queue = new ConcurrentLinkedQueue<>();
     public Message getMessage(){
-        try {
-            return queue.take();
-        } catch (InterruptedException e) {
-            return null;
-        }
+            return queue.poll();
+    }
+    public int size(){
+        return queue.size();
     }
     public void putMessage(Message msg){
         queue.add(msg);

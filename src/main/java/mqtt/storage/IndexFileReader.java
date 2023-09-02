@@ -1,8 +1,5 @@
 package mqtt.storage;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.UnpooledHeapByteBuf;
 import mqtt.util.FileUtil;
 import mqtt.util.Pair;
 import mqtt.util.StorageUtil;
@@ -14,17 +11,14 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.WeakHashMap;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static mqtt.util.FileUtil.MAX_FILE_SIZE;
 
 /**
  * 读写 topic 对应的 索引文件
  */
-public class IndexFileWriterReader {
+public class IndexFileReader {
     /**
      *索引文件对应的topic
      */
@@ -43,12 +37,12 @@ public class IndexFileWriterReader {
     private final RandomAccessFile indexFileReader;
 
 
-    private MappedByteBuffer indexFileWriter;
+    private final MappedByteBuffer indexFileWriter;
 
     /**
      * 当前读取的 消息文件的索引
      */
-    private int fileIndex = -1;
+    private int messageFileIndex = -1;
 
 
     private final ConcurrentLinkedQueue<Pair<Long, MessagePos>> messagePosQueue = new ConcurrentLinkedQueue<>();
@@ -63,7 +57,7 @@ public class IndexFileWriterReader {
      */
     private RandomAccessFile messageFile;
 
-    public IndexFileWriterReader(String topic, File indexFile, IndexFileReadPointer indexFileReadPointer) {
+    public IndexFileReader(String topic, File indexFile, IndexFileReadPointer indexFileReadPointer) {
         this.topic = topic;
         try {
             // 一个用来读取，一个用来写入
@@ -119,9 +113,9 @@ public class IndexFileWriterReader {
     }
     private void checkFileIndex( MessagePos pos){
         try {
-            if (pos.fileIndex != this.fileIndex) {
-                this.fileIndex = pos.fileIndex;
-                messageFile = new RandomAccessFile(FileUtil.getMessageFile(fileIndex), "r");
+            if (pos.fileIndex != this.messageFileIndex) {
+                this.messageFileIndex = pos.fileIndex;
+                messageFile = new RandomAccessFile(FileUtil.getMessageFile(messageFileIndex), "r");
             }
         } catch (Exception e) {
             System.out.println("读取消息文件失败:"+e);

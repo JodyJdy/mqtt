@@ -17,18 +17,20 @@ public class MessageWriter extends Thread {
 
     @Override
     public void run() {
-        while(true){
+        while(!Thread.currentThread().isInterrupted()){
             Message msg = queue.getMessage();
-            try {
-                if (msg == null) {
+            if (msg == null) {
+                try {
                     Thread.sleep(50);
-                    continue;
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
+                continue;
+            }
+            try {
                 messageStorage.writeMessage(msg);
             } catch (IOException e) {
                 e.printStackTrace();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
             }
         }
     }

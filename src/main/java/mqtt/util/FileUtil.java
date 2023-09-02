@@ -19,11 +19,11 @@ public class FileUtil {
     /**
      * 一次性读取的 消息索引的 数量
      */
-    public static final int READ_MESSAGE_INDEX =  (4 * 1024) - (4 * 1024)% getMessageIndexSize();
+    public static final int READ_MESSAGE_INDEX =  PAGE_SIZE - PAGE_SIZE% getMessageIndexSize();
     /**
-     * 最大文件大小, 50 MB
+     * 最大文件大小, 1024 MB
      */
-    public static final int MAX_FILE_SIZE = 1024 * 1024 * 50;
+    public static final int MAX_FILE_SIZE = 1024 * 1024 * 1024;
     /**
      * 消息存储使用的文件格式
      */

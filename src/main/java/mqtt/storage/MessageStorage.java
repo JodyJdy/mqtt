@@ -46,7 +46,7 @@ public class MessageStorage {
     /**
      * 存储topic->topic索引文件 indexFile 的映射
      */
-    private final Map<String, IndexFileWriterReader> topic2IndexFileWriterReader = new ConcurrentHashMap<>();
+    private final Map<String, IndexFileReader> topic2IndexFileWriterReader = new ConcurrentHashMap<>();
 
     public MessageStorage() throws IOException {
         //获取文件写指针
@@ -92,7 +92,7 @@ public class MessageStorage {
             FileUtils.touch(indexFile);
         }
         IndexFileReadPointer indexFileReadPointer = new IndexFileReadPointer(getIndexFileReadPosFile(topic));
-        topic2IndexFileWriterReader.put(topic, new IndexFileWriterReader(topic, indexFile, indexFileReadPointer));
+        topic2IndexFileWriterReader.put(topic, new IndexFileReader(topic, indexFile, indexFileReadPointer));
         return true;
     }
 
@@ -151,8 +151,8 @@ public class MessageStorage {
      * 从文件里面读取消息
      */
     public Message readMessage(String topic) {
-        IndexFileWriterReader indexFileWriterReader = topic2IndexFileWriterReader.get(topic);
-        return indexFileWriterReader.readMessage();
+        IndexFileReader indexFileReader = topic2IndexFileWriterReader.get(topic);
+        return indexFileReader.readMessage();
     }
 
     public void stopRead(String topic) {
@@ -181,8 +181,8 @@ public class MessageStorage {
      */
     private void updateIndexFileReadPos() {
         topic2IndexFileWriterReader.forEach(
-                (s, indexFileWriterReader) -> {
-                    indexFileWriterReader.getIndexFileReadPointer().flush();
+                (s, indexFileReader) -> {
+                    indexFileReader.getIndexFileReadPointer().flush();
                 }
         );
     }

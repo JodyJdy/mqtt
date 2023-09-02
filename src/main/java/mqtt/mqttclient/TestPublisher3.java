@@ -1,5 +1,3 @@
-
-
 package mqtt.mqttclient;
 
 import io.netty.util.CharsetUtil;
@@ -8,11 +6,7 @@ import mqtt.storage.Message;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- *测试类
- **/
-
-public class TestPublish {
+public class TestPublisher3 {
     public static void main(String[] args) throws InterruptedException {
         MqttClient mqttClient = new MqttClient(9999,"localhost");
 
