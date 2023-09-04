@@ -47,8 +47,6 @@ public class UserSessions {
      */
     public synchronized void rmUser(String id){
         idToUser.remove(id);
-        //重置缓存
-        topicSubscriberMap = new HashMap<>(2);
     }
     /**
      * 添加订阅

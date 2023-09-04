@@ -20,6 +20,8 @@ public class FileUtil {
      * 一次性读取的 消息索引的 数量
      */
     public static final int READ_MESSAGE_INDEX =  PAGE_SIZE - PAGE_SIZE% getMessageIndexSize();
+
+    public static final int DEFAULT_SINGLE_FILE_SIZE = 50 * 1024 * 1024;
     /**
      * 最大文件大小, 1024 MB
      */
@@ -28,20 +30,6 @@ public class FileUtil {
      * 消息存储使用的文件格式
      */
     public final static String MSG_TYPE = ".msg";
-    /**
-     * 存储所有topic 文件
-     */
-    public final static String TOPIC_SET = "mqtt.topic";
-    /**
-     * 索引文件的文件格式
-     */
-    public final static String INDEX_TYPE = ".index";
-
-    public final static String INDEX_POSITION = ".pos";
-    /**
-     * 文件写指针使用的文件名称
-     */
-    public final static String FILE_POINTER_NAME = "mqtt.pos";
     /**
      * 文件存储根路径
      */
@@ -52,17 +40,6 @@ public class FileUtil {
     public final static String INDEX_PATH = ROOT_PATH + "index/";
 
 
-    /**
-     * @param index 消息文件下标
-     */
-    public static File getMessageFile(int index){
-        return new File(ROOT_PATH + index + MSG_TYPE);
-    }
-
-
-    public static File getMessageFileWriterPointer(){
-        return new File(ROOT_PATH + FILE_POINTER_NAME);
-    }
 
 
     /**
@@ -80,18 +57,7 @@ public class FileUtil {
      */
     public static int getMessageIndexSize(){
         //
-        return 8 + 4;
+        return 8;
     }
 
-    /**
-     * 获取主题消息索引文件
-     */
-    public static File getIndexFile(String topic) {
-        return  new File(INDEX_PATH + topic + INDEX_TYPE);
-    }
-
-
-    public static File getIndexFileReadPosFile(String topic){
-        return  new File(INDEX_PATH + topic + INDEX_POSITION);
-    }
 }

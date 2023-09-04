@@ -19,11 +19,13 @@ public class TestSubscribe {
         publisher.sendSubscribe("hello", MqttQoS.EXACTLY_ONCE.value(), x->{
 //            int l = atomicInteger.getAndIncrement();
 //            if(l % 100000 ==0){
-//                System.out.println(System.currentTimeMillis() - start);
+//                double seconds = (System.currentTimeMillis() - start) / 1000.0;
+//                if (seconds == 0) {
+//                    seconds = 1;
+//                }
+//                System.out.println(l / seconds);
 //            }
             System.out.println(x);
         });
-        Thread.sleep(5*1000);
-        publisher.sendUnsubscribe("hello");
     }
 }

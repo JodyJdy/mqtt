@@ -6,6 +6,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.util.CharsetUtil;
 
+import java.nio.ByteBuffer;
+
 import static io.netty.buffer.ByteBufUtil.reserveAndWriteUtf8;
 
 /**
@@ -68,6 +70,65 @@ public class ByteUtil {
         buf.ensureWritable(utfBytesLen + 2);
         buf.writeShort(utfBytesLen);
         reserveAndWriteUtf8(buf, s, utfBytesLen);
+    }
+
+
+    public static byte[] char2Bytes(char ch){
+        ByteBuffer b = ByteBuffer.wrap(new byte[2]);
+        b.putChar(ch);
+        return b.array();
+    }
+
+    public static byte[] short2Bytes(short sh){
+        ByteBuffer b = ByteBuffer.wrap(new byte[2]);
+        b.putShort(sh);
+        return b.array();
+    }
+    public static byte[] int2Bytes(int i) {
+        ByteBuffer b = ByteBuffer.wrap(new byte[4]);
+        b.putInt(i);
+        return b.array();
+    }
+    public static byte[] float2Bytes(float f) {
+        return int2Bytes(Float.floatToIntBits(f));
+    }
+
+    public static byte[] long2Bytes(long l) {
+        ByteBuffer b = ByteBuffer.wrap(new byte[8]);
+        b.putLong(l);
+        return b.array();
+    }
+
+    public static byte[] double2Bytes(double d) {
+        return long2Bytes(Double.doubleToLongBits(d));
+    }
+
+    public static short bytes2Short(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getShort();
+    }
+
+    public static char bytes2Char(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getChar();
+    }
+    public static float bytes2Float(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getFloat();
+    }
+
+
+    public static int bytes2Int(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getInt();
+    }
+    public static long bytes2Long(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getLong();
+    }
+    public static double bytes2Double(byte[] bytes) {
+        ByteBuffer b = ByteBuffer.wrap(bytes);
+        return b.getDouble();
     }
 
 }
