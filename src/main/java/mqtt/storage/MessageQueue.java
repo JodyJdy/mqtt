@@ -2,20 +2,28 @@
 
 package mqtt.storage;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import mqtt.util.FileUtil;
+
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * 消息中转队列
  */
 public class MessageQueue {
-    private final ConcurrentLinkedQueue<Message> queue = new ConcurrentLinkedQueue<>();
-    public Message getMessage(){
-            return queue.poll();
+    /**
+     * 对大小做限制，防止oom
+     */
+    private final ArrayBlockingQueue<Message> queue = new ArrayBlockingQueue<>(FileUtil.BLOCKING_QUEUE_SIZE);
+
+    public Message getMessage() throws InterruptedException {
+        return queue.take();
     }
-    public int size(){
+
+    public int size() {
         return queue.size();
     }
-    public void putMessage(Message msg){
+
+    public void putMessage(Message msg) {
         queue.add(msg);
     }
 

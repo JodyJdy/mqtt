@@ -12,8 +12,8 @@ import java.util.concurrent.*;
  * 将消息中转到对应的 Listener处理
  */
 public class MessageExchanger {
-    private ThreadPoolExecutor threadPoolExecutor;
-    private Map<String,MessageListener> subMap;
+    private final ThreadPoolExecutor threadPoolExecutor;
+    private final Map<String,MessageListener> subMap;
     MessageExchanger(Map<String, MessageListener> subMap){
         this.threadPoolExecutor =  new ThreadPoolExecutor(4, 4, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), r -> {
             Thread thread = new Thread(r);

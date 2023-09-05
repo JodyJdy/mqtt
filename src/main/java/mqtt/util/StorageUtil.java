@@ -8,9 +8,6 @@ import mqtt.storage.StoredMessage;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -51,17 +48,18 @@ public class StorageUtil {
     }
 
 
-    private static Pattern topicSuffix = Pattern.compile("_\\d+\\.topic$");
+    private static final Pattern topicSuffix = Pattern.compile("_\\d+\\.topic$");
     /**
      * 读取topic
      */
-    public static List<String> readTopic() throws IOException {
+    public static List<String> readTopic() {
         File dir = FileUtil.getIndexFileDir();
         List<String> topics = new ArrayList<>();
-        if (dir.listFiles() == null) {
+        File[] files = dir.listFiles();
+        if (files == null) {
             return topics;
         }
-        for (File file : dir.listFiles()) {
+        for (File file : files) {
             if (file.getName().startsWith(".")) {
                continue;
             }

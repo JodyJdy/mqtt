@@ -15,7 +15,7 @@ public class TestPublisher3 {
         options.setUserName("aa");
         options.setPassword("bb".getBytes());
         Publisher publisher = mqttClient.connect(options);
-        Message message = new Message("hello","hello world".getBytes(CharsetUtil.UTF_8),1);
+        Message message = new Message("hello",new byte[50 * 1024],1);
         List<PublishResult> publishResults = new ArrayList<>();
         Thread.sleep(3000);
 

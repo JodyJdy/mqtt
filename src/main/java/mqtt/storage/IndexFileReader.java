@@ -41,7 +41,7 @@ public class IndexFileReader {
 
     public IndexFileReader(String topic,ReadWriteMultiFile.RandomAccessReader messageFileReader) {
         this.topic = topic;
-        topicIndexFile = new ReadWriteMultiFile(topic, ".topic", FileUtil.INDEX_PATH, 5);//FileUtil.DEFAULT_SINGLE_FILE_SIZE);
+        topicIndexFile = new ReadWriteMultiFile(topic, ".topic", FileUtil.INDEX_PATH, FileUtil.DEFAULT_SINGLE_FILE_SIZE);
         topicIndexFileReader = topicIndexFile.getInputStreamReader(topic);
         this.messageFileReader = messageFileReader;
     }

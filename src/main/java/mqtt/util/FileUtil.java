@@ -17,6 +17,12 @@ public class FileUtil {
 
 
     /**
+     * 中转队列大小
+     */
+    public static final int BLOCKING_QUEUE_SIZE = 100000;
+
+
+    /**
      * 一次性读取的 消息索引的 数量
      */
     public static final int READ_MESSAGE_INDEX =  PAGE_SIZE - PAGE_SIZE% getMessageIndexSize();

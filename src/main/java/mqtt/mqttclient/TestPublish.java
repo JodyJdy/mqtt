@@ -21,15 +21,13 @@ public class TestPublish {
         options.setUserName("aa");
         options.setPassword("bb".getBytes());
         Publisher publisher = mqttClient.connect(options);
-        Message message = new Message("hello","hello world".getBytes(CharsetUtil.UTF_8),1);
-        List<PublishResult> publishResults = new ArrayList<>();
+        Message message = new Message("hello",new byte[1024],2);
         Thread.sleep(3000);
-
         long start = System.currentTimeMillis();
-        for(int i=0;i<1;i++){
-            publishResults.add(publisher.publish(message));
+        // ack 后才 发送下一条
+        for(int i=0;i<3000000;i++){
+            publisher.publish(message).waitForAck();
         }
-        publishResults.forEach(PublishResult::waitForAck);
         long end = System.currentTimeMillis();
         System.out.println(end - start);
 

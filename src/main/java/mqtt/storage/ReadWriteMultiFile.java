@@ -742,7 +742,9 @@ public class ReadWriteMultiFile {
                     throw new RuntimeException("pos越界");
                 }
             }
-            readFile.skip(readPos);
+            if(readFile.skip(readPos) != readPos){
+                throw new RuntimeException("pos越界");
+            }
         }
 
         public long currentFileLength() {
@@ -773,14 +775,13 @@ public class ReadWriteMultiFile {
                 long curLength = currentFileLength();
                 //可以一次性读取完
                 if (readPos + length <= curLength) {
-                    readPos += length;
-                    readFile.read(dst, offset, length);
+                    readPos += readFile.read(dst, offset, length);
                     length = 0;
                     break;
                 } else {
                     //读取一部分，之后的内容从下个文件里面读取
                     int tempLen = (int) (curLength - readPos);
-                    readFile.read(dst, offset, tempLen);
+                    tempLen = readFile.read(dst, offset, tempLen);
                     readPos += tempLen;
                     //调整偏移量
                     offset += tempLen;
