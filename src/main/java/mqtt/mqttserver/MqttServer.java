@@ -15,6 +15,8 @@ import mqtt.codec.MqttEncoder;
 import mqtt.codec.MqttServerMessageDecoder;
 import mqtt.storage.*;
 
+import java.io.IOException;
+
 
 /**
  *mqtt 服务器
@@ -27,10 +29,7 @@ public class MqttServer {
         this.port = port;
     }
 
-    public static void main(String[] args) throws Exception {
-        new MqttServer(9999).start();
-    }
-    private void start() throws Exception{
+    public void start() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(2);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -61,6 +60,9 @@ public class MqttServer {
             writer.start();
             ChannelFuture cf = bootstrap.bind(port).sync();
             cf.channel().closeFuture().sync();
+        }
+        catch (InterruptedException | IOException e) {
+            e.printStackTrace();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
