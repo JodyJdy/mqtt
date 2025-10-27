@@ -26,6 +26,11 @@ public class TopicMessageSenderThread extends Thread{
         while (!stop) {
             final Message message = messageStorage.readMessage(topic);
             if (message == null) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                   break;
+                }
                 continue;
             }
             Set<Receiver> receiverSet = userSessions.getReceiver(message.getTopic());

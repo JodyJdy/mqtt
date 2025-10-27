@@ -93,6 +93,9 @@ public class MessageStorage {
      */
     public Message readMessage(String topic) {
         IndexFileReader indexFileReader = topic2IndexFileWriterReader.get(topic);
+        if (indexFileReader == null) {
+           return null;
+        }
         return indexFileReader.readMessage();
     }
 

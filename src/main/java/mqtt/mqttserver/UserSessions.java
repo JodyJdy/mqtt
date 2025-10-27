@@ -22,7 +22,7 @@ public class UserSessions {
     /**
      *  topic 到订阅用户之间的缓存,避免每次都进行查询
      */
-    private Map<String,Set<Receiver>> topicSubscriberMap = new ConcurrentHashMap<>();
+    private final Map<String,Set<Receiver>> topicSubscriberMap = new ConcurrentHashMap<>();
 
 
     private TopicMessageSender topicMessageSender;
