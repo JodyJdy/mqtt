@@ -116,15 +116,14 @@ public class ReadWriteMultiFile {
         this.fileName = fileName;
         this.singleFileSize = singleFileSize;
         this.dir = dir;
+
         writeFileIndex = 0;
         writeFilePos = 0;
-
         //判断文件是不是之前已经被创建了
         try {
             File pointerFile = FileUtils.getFile(dir, getWriterPointerFile());
             if (pointerFile.exists()) {
                 RandomAccessFile pointer = new RandomAccessFile(pointerFile, "rw");
-                singleFileSize = pointer.readInt();
                 writeFileIndex = pointer.readInt();
                 writeFilePos = pointer.readLong();
                 writeFilePointer = pointer.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, getPointerFileSize());
@@ -132,15 +131,12 @@ public class ReadWriteMultiFile {
                 FileUtils.touch(pointerFile);
                 RandomAccessFile pointer = new RandomAccessFile(pointerFile, "rw");
                 writeFilePointer = pointer.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, getPointerFileSize());
+                forceWritePos();
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        //创建写的文件
-        try {
-            File shouldWriteFile = FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex));
-            if (shouldWriteFile.exists()) {
-                FileUtils.touch(shouldWriteFile);
+
+            File rawWriteFile = FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex));
+            if (!rawWriteFile.exists()) {
+                FileUtils.touch(rawWriteFile);
             }
             try (RandomAccessFile temp = new RandomAccessFile(FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex)), "rw")) {
                 writeFile = temp.getChannel().map(FileChannel.MapMode.READ_WRITE, writeFilePos, singleFileSize);
@@ -163,12 +159,16 @@ public class ReadWriteMultiFile {
         backgroundScheduler.scheduleAtFixedRate(() -> writeFile.force(), 0, fileForcePeriod, TimeUnit.SECONDS);
     }
 
+    public void force() {
+        writeFile.force();
+        forceWritePos();
+    }
+
     /**
      * 记录当前写的位置
      */
     private void forceWritePos(){
         writeFilePointer.position(0);
-        writeFilePointer.putInt(singleFileSize);
         writeFilePointer.putInt(writeFileIndex);
         writeFilePointer.putLong(writeFilePos);
         writeFilePointer.force();
@@ -204,12 +204,11 @@ public class ReadWriteMultiFile {
 
     /**
      * 获取读写指针 文件的 大小
-     * singleFileSize
      * writeFileIndex
      * writeFilePos
      */
     public int getPointerFileSize() {
-        return 4 + 4 + 8;
+        return 4 + 8;
     }
 
     /**
@@ -315,7 +314,9 @@ public class ReadWriteMultiFile {
             writeFileIndex++;
             writeFilePos = 0;
             File nextWriteFile = FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex));
-            FileUtils.touch(nextWriteFile);
+            if (!nextWriteFile.exists()) {
+                FileUtils.touch(nextWriteFile);
+            }
             try (RandomAccessFile temp = new RandomAccessFile(FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex)), "rw")) {
                 writeFile = temp.getChannel().map(FileChannel.MapMode.READ_WRITE, writeFilePos, singleFileSize);
             }
