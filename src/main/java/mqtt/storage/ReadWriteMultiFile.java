@@ -16,9 +16,10 @@ import java.util.concurrent.TimeUnit;
  * 将内容写入到多个文件中
  * 读取多个文件表现的像是读取单文件
  *
+ * 所有的线程安全都应该在外部线程中处理
+ *
  * @author jdy
  * @title: ReadWriteMultiFile
- * @description:
  * @data 2023/9/4 9:37
  */
 public class ReadWriteMultiFile {
@@ -39,13 +40,6 @@ public class ReadWriteMultiFile {
 
 
     /**
-     * 文件名称与序号的分隔符
-     * xxx_0.filetype
-     * xxx_1.filetype
-     * xxx_2.filetype
-     */
-    private String split = "_";
-    /**
      * 文件名称
      */
     private final String fileName;
@@ -63,12 +57,12 @@ public class ReadWriteMultiFile {
      * 当前写的文件下标
      */
 
-    private volatile int writeFileIndex;
+    private  int writeFileIndex;
 
     /**
      * 当前写到的位置
      */
-    private volatile long writeFilePos;
+    private  long writeFilePos;
 
     /**
      * 单文件大小
@@ -92,6 +86,15 @@ public class ReadWriteMultiFile {
      */
     private final ConcurrentHashMap<String, ReadPointer> needStoreProcessReadPointer = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, MappedByteBuffer> needStoreProcess = new ConcurrentHashMap<>();
+
+
+    /**
+     * 执行后台任务
+     */
+    private final ScheduledThreadPoolExecutor backgroundScheduler = new ScheduledThreadPoolExecutor(1);
+
+
+
 
 
     public ReadWriteMultiFile(String fileName, String fileType, String dir) {
@@ -153,12 +156,11 @@ public class ReadWriteMultiFile {
      * 启动后台任务
      */
     private void background() {
-        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
         //文件写指针1s刷新一次
-        executor.scheduleAtFixedRate(this::forceWritePos, 1, pointerForcePeriod, TimeUnit.SECONDS);
-        executor.scheduleAtFixedRate(this::forceReadPointer, 1, pointerForcePeriod, TimeUnit.SECONDS);
+        backgroundScheduler.scheduleAtFixedRate(this::forceWritePos, 1, pointerForcePeriod, TimeUnit.SECONDS);
+        backgroundScheduler.scheduleAtFixedRate(this::forceReadPointer, 1, pointerForcePeriod, TimeUnit.SECONDS);
         //将 内存中的数据刷盘,默认5s一次
-        executor.scheduleAtFixedRate(() -> writeFile.force(), 0, fileForcePeriod, TimeUnit.SECONDS);
+        backgroundScheduler.scheduleAtFixedRate(() -> writeFile.force(), 0, fileForcePeriod, TimeUnit.SECONDS);
     }
 
     /**
@@ -214,6 +216,13 @@ public class ReadWriteMultiFile {
      * 获取文件名称
      */
     public String getFileNameWithIndex(int index) {
+        /**
+         * 文件名称与序号的分隔符
+         * xxx_0.filetype
+         * xxx_1.filetype
+         * xxx_2.filetype
+         */
+        String split = "_";
         return fileName + split + index + "." + fileType;
     }
 
@@ -257,14 +266,13 @@ public class ReadWriteMultiFile {
             if (writeFile.remaining() == 0) {
                 switchWriteFile();
                 put(src, offset, length);
-                return;
             } else {
                 //有多少写多少
                 int n = writeFile.remaining();
                 put(src, offset, n);
                 put(src, offset + n, length - n);
-                return;
             }
+            return;
         }
         writeFile.put(src, offset, length);
         writeFilePos+=length;
@@ -452,7 +460,7 @@ public class ReadWriteMultiFile {
      * 获取随机读取
      */
     public class RandomAccessReader implements ReadPointer {
-        private volatile int  readFileIndex;
+        private  int  readFileIndex;
         /**
          * 在下标为readFileIndex的文件中读取到的位置
          */
@@ -700,7 +708,10 @@ public class ReadWriteMultiFile {
             this.readPos = (int) (globalPos % singleFileSize);
             try {
                 readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
-                readFile.skip(readPos);
+                long skip = readFile.skip(readPos);
+                if (skip != readPos) {
+                    throw new RuntimeException("skip 越界");
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -714,7 +725,10 @@ public class ReadWriteMultiFile {
             this.readPos = readPos;
             try {
                 readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
-                readFile.skip(readPos);
+                long skip = readFile.skip(readPos);
+                if (skip != readPos) {
+                    throw new RuntimeException("skip 越界");
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
