@@ -55,7 +55,7 @@ public class Message {
     public byte[] getMsg() {
         return msg;
     }
-    static StoredMessage transToStoredMessage(Message msg){
+    public static StoredMessage transToStoredMessage(Message msg){
         byte[] bytes = msg.topic.getBytes(CharsetUtil.UTF_8);
         return new StoredMessage(msg.getPacketId(),bytes.length,bytes,msg.msg.length,msg.msg,msg.qos);
     }

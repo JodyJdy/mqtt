@@ -6,6 +6,7 @@ import mqtt.storage.Message;
 import mqtt.storage.ReadWriteMultiFile;
 import mqtt.storage.StoredMessage;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,20 +18,33 @@ import java.util.regex.Pattern;
  **/
 
 public class StorageUtil {
+
+    /**
+     * 每条消息的内容写入同一个临时的缓存中，避免重复创建byte[]
+     */
+    private static final ByteArrayOutputStream tempBuffer = new ByteArrayOutputStream(1024);
     /**
      * 使用 MappedByteBuffer写文件
      */
     public static void writeMessage(ReadWriteMultiFile buffer, StoredMessage sM) {
-        buffer.put((byte) ((sM.getPacketId() & 0xff00) >> 8));
-        buffer.put((byte) (sM.getPacketId() & 0xff));
-        buffer.put((byte) sM.getQos());
-        buffer.put((byte) ((sM.getTopicLen() & 0xff00) >> 8));
-        buffer.put((byte) ((sM.getTopicLen() & 0xff)));
-        buffer.put(sM.getTopic());
-        buffer.put((byte) ((sM.getMsgLen() & 0xff00) >> 8));
-        buffer.put((byte) (sM.getMsgLen() & 0xff));
-        buffer.put(sM.getMsg());
+        tempBuffer.reset();
+        try {
+            tempBuffer.write((byte) ((sM.getPacketId() & 0xff00) >> 8));
+            tempBuffer.write((byte) (sM.getPacketId() & 0xff));
+            tempBuffer.write((byte) sM.getQos());
+            tempBuffer.write((byte) ((sM.getTopicLen() & 0xff00) >> 8));
+            tempBuffer.write((byte) ((sM.getTopicLen() & 0xff)));
+            tempBuffer.write(sM.getTopic());
+            tempBuffer.write((byte) ((sM.getMsgLen() & 0xff00) >> 8));
+            tempBuffer.write((byte) (sM.getMsgLen() & 0xff));
+            tempBuffer.write(sM.getMsg());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        buffer.put(tempBuffer.toByteArray());
     }
+
+
 
     /**
      * 使用随机读取，读取消息
