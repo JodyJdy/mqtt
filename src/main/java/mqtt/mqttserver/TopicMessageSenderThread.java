@@ -1,14 +1,19 @@
 package mqtt.mqttserver;
 
 import io.netty.channel.Channel;
+import mqtt.enums.MqttQoS;
 import mqtt.protocol.MqttMessage;
 import mqtt.storage.Message;
 import mqtt.storage.MessageStorage;
 import mqtt.util.MqttMessageUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 
 public class TopicMessageSenderThread extends Thread{
+    public   static final Logger logger = LoggerFactory.getLogger(TopicMessageSenderThread.class);
+
     private final MessageStorage messageStorage;
     private final UserSessions userSessions;
     private final String topic;
@@ -22,7 +27,7 @@ public class TopicMessageSenderThread extends Thread{
 
     @Override
     public void run() {
-        System.out.println("任务启动");
+        logger.info("topic:{} 消息发送任务启动", topic);
         while (!stop) {
             final Message message = messageStorage.readMessage(topic);
             if (message == null) {
@@ -36,11 +41,13 @@ public class TopicMessageSenderThread extends Thread{
             Set<Receiver> receiverSet = userSessions.getReceiver(message.getTopic());
             receiverSet.forEach(receiver -> {
                 Channel channel = userSessions.getUser(receiver.getId()).getChannel();
-                MqttMessage msg = MqttMessageUtil.publish(message, receiver.getMqttQoS());
+                //qos采用 Min(receiver.qos, message.qos)
+                int qos = Math.min(receiver.getMqttQoS().value(), message.getQos());
+                MqttMessage msg = MqttMessageUtil.publish(message, MqttQoS.valueOf(qos));
                 channel.writeAndFlush(msg);
             });
         }
-        System.out.println("任务结束");
+        logger.info("topic:{} 消息发送任务结束", topic);
     }
     public void stopSend(){
         stop = true;

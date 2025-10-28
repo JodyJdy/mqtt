@@ -23,4 +23,12 @@ public class MqttTopic{
     public MqttQoS getQoS() {
         return qoS;
     }
+
+    @Override
+    public String toString() {
+        return "MqttTopic{" +
+                "topic='" + topic + '\'' +
+                ", qoS=" + qoS +
+                '}';
+    }
 }

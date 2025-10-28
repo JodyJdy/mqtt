@@ -10,6 +10,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import mqtt.codec.MqttClientMessageDecoder;
 import mqtt.codec.MqttDecoder;
 import mqtt.codec.MqttEncoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +21,7 @@ import java.util.concurrent.TimeUnit;
  **/
 
 public class MqttClient {
+    public static final Logger logger = LoggerFactory.getLogger(MqttClient.class);
 
     private final int port;
     private final String address;
@@ -63,7 +66,7 @@ public class MqttClient {
 
             PublishResult connResult = publisher.sendConn(options);
             connResult.waitForAck();
-            System.out.println("连接成功");
+            logger.info("连接到服务器:{}成功",address);
             //启动一个定时心跳的任务
             final ScheduledThreadPoolExecutor beat = new ScheduledThreadPoolExecutor(1, r -> {
                 Thread t = new Thread(r);
@@ -79,8 +82,8 @@ public class MqttClient {
             });
             return publisher;
         } catch (InterruptedException e) {
-            System.out.println("连接失败");
+            logger.error("连接到服务器失败",e);
+            throw new RuntimeException(e);
         }
-        return null;
     }
 }

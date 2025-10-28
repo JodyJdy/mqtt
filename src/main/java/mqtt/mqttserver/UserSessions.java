@@ -5,6 +5,8 @@ package mqtt.mqttserver;
 import mqtt.enums.MqttQoS;
 import mqtt.protocol.payload.MqttConnectPayload;
 import mqtt.protocol.MqttTopic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
  **/
 
 public class UserSessions {
+
+    public static final Logger logger = LoggerFactory.getLogger(UserSessions.class);
     /**
      * 用户名 -> Session之间的映射
      */
@@ -40,7 +44,9 @@ public class UserSessions {
      */
     public void addUser(Session session){
         MqttConnectPayload payload = session.getMqttConnectPayload();
-        idToUser.put(payload.getClientIdentifier(), session);
+        String id = payload.getClientIdentifier();
+        logger.info("用户{}加入",id);
+        idToUser.put(id, session);
     }
     /**
      * 删除一个用户
@@ -54,6 +60,7 @@ public class UserSessions {
     public synchronized void addSub(String id, List<MqttTopic> subs){
         Session session = idToUser.get(id);
         session.addSubscribe(subs);
+        logger.info("用户{}订阅了{}",id,subs);
         List<String> newTask = new ArrayList<>();
         for (MqttTopic mqttTopic : subs) {
             String topic = mqttTopic.getTopic();
@@ -75,6 +82,7 @@ public class UserSessions {
     public synchronized void rmSub(String id, List<String> subs){
         Session session = idToUser.get(id);
         session.rmSubscribe(subs);
+        logger.info("用户{}取消订阅了{}",id,subs);
         for(String  topic : subs) {
             //删除订阅
             if (topicSubscriberMap.containsKey(topic)) {
