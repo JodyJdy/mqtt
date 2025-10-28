@@ -1,6 +1,6 @@
 # mqtt
 Mqtt
-基于Netty实现的 MqttClient,MqttServer,目前只实现Qos 0
+基于Netty实现的 MqttClient,MqttServer
 
 ## 使用
 ### 服务端启动

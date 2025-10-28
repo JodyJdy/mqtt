@@ -13,9 +13,9 @@ public class MessageQueue {
     /**
      * 对大小做限制，防止oom
      */
-    private final ArrayBlockingQueue<Message> queue = new ArrayBlockingQueue<>(FileUtil.BLOCKING_QUEUE_SIZE);
+    private final ArrayBlockingQueue<CallbackableMessage> queue = new ArrayBlockingQueue<>(FileUtil.BLOCKING_QUEUE_SIZE);
 
-    public Message getMessage() throws InterruptedException {
+    public CallbackableMessage getMessage() throws InterruptedException {
         return queue.take();
     }
 
@@ -23,7 +23,7 @@ public class MessageQueue {
         return queue.size();
     }
 
-    public void putMessage(Message msg) {
+    public void addMessage(CallbackableMessage msg) {
         queue.add(msg);
     }
 

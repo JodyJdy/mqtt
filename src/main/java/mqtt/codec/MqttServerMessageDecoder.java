@@ -14,7 +14,7 @@ import mqtt.protocol.payload.*;
 import mqtt.protocol.varheader.*;
 import mqtt.mqttserver.Session;
 import mqtt.mqttserver.UserSessions;
-import mqtt.storage.Message;
+import mqtt.storage.CallbackableMessage;
 import mqtt.storage.MessageQueue;
 import mqtt.util.MqttMessageUtil;
 
@@ -54,9 +54,11 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
                 result = connReturn(msg, ctx);
                 break;
             case PUBLISH:
-            case PUBREC:
             case PUBREL:
-                result = publishReturn(msg);
+            case PUBACK:
+            case PUBREC:
+            case PUBCOMP:
+                result = publishReturn(ctx.channel(),msg);
                 break;
             case SUBSCRIBE:
             case UNSUBSCRIBE:
@@ -91,29 +93,31 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
     /**
      * 对于发布报文的处理以及返回
      */
-    private MqttMessage publishReturn(MqttMessage msg) {
-        MqttFixedHeader fixedHeader = msg.fixedHeader();
+    private MqttMessage publishReturn(final Channel channel,MqttMessage msg) {
+        final MqttFixedHeader fixedHeader = msg.fixedHeader();
         if (msg.fixedHeader().messageType() == MqttMessageType.PUBLISH) {
             MqttPublishVarHeader varHeader = (MqttPublishVarHeader) msg.variableHeader();
             MqttPublishPayload payload = (MqttPublishPayload) msg.payload();
 
             //接受到消息，将消息写入中转队列
-            Message ms = new Message(varHeader.getPacketId(), varHeader.getTopicName(),
+            CallbackableMessage ms = new CallbackableMessage(varHeader.getPacketId(), varHeader.getTopicName(),
                     payload.getBytes(), fixedHeader.qosLevel().value());
 
-            messageQueue.putMessage(ms);
-            //无需响应
-            if (fixedHeader.qosLevel().value() == 0) {
-                return null;
-            }
             //qos级别 == 1返回 publishAck报文
-            if (fixedHeader.qosLevel().value() == 1) {
-                return MqttMessageUtil.publishAck(varHeader.getPacketId());
+            if (fixedHeader.qosLevel().value() == 1 ) {
+                //当消息存储成功后，设置回调函数，返回pubAck报文
+                ms.setCallback(() -> channel.writeAndFlush(MqttMessageUtil.publishAck(varHeader.getPacketId())));
             }
             // qos级别 ==2 返回 publisRec 报文
             if (fixedHeader.qosLevel().value() == 2) {
-                return MqttMessageUtil.publishRec(varHeader.getPacketId());
+                //当消息存储成功后，设置回调函数，返回pubRec报文
+                ms.setCallback(() -> channel.writeAndFlush(MqttMessageUtil.publishRec(varHeader.getPacketId())));
             }
+            messageQueue.addMessage(ms);
+            //无需响应
+//            if (fixedHeader.qosLevel().value() == 0) {
+//                return null;
+//            }
             // qos级别为2时，客户端会发送一个pubRel报文,返回发布完成
         } else if (msg.fixedHeader().messageType() == MqttMessageType.PUBREL) {
             MqttPublishRelVarHeader varHeader = (MqttPublishRelVarHeader) msg.variableHeader();
@@ -122,7 +126,12 @@ public class MqttServerMessageDecoder extends SimpleChannelInboundHandler<MqttMe
             //qos==2,返回发布释放
             MqttPublishRecVarHeader varHeader = (MqttPublishRecVarHeader) msg.variableHeader();
             return MqttMessageUtil.publishRel(varHeader.getPacketId());
-        }
+        } //发布ack报文, qos = 1， 下面代码注释/不注释效果相同
+//        else if(fixedHeader.messageType() == MqttMessageType.PUBACK){
+//            return null;
+//        } else if (fixedHeader.messageType() == MqttMessageType.PUBCOMP) {
+//            return null;
+//        }
         return null;
     }
 

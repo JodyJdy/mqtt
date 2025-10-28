@@ -21,6 +21,19 @@ public class FileUtil {
      */
     public static final int BLOCKING_QUEUE_SIZE = 100000;
 
+    /**
+     * 消息写Buffer 大小  50MB
+     */
+    public static final int MESSAGE_BUFFER_SIZE = 50 * 1024 * 1024;
+    /**
+     * 消息读取Buffer大小
+     */
+    public static final int MESSAGE_READ_BUFFER_SIZE = 50 * 1024 * 1024;
+
+
+
+
+
 
     /**
      * 一次性读取的 消息索引的 数量

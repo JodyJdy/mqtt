@@ -3,7 +3,6 @@
 package mqtt.storage;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 将消息写入文件
@@ -20,8 +19,10 @@ public class MessageWriter extends Thread {
     public void run() {
         while(!Thread.currentThread().isInterrupted()){
             try {
-                Message msg = queue.getMessage();
+                CallbackableMessage msg = queue.getMessage();
                 messageStorage.writeMessage(msg);
+                //存储完毕后，执行回调，响应发送方
+                msg.invokeCallback();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (InterruptedException e) {

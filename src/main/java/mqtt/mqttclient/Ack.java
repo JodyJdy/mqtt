@@ -9,7 +9,7 @@ import java.util.concurrent.locks.AbstractQueuedSynchronizer;
 
 /**
  *
- * 用于高性能的处理消息ack
+ * 用于高性能的处理消息ack，只有set里面包含的消息id才会阻塞至ack，否则会继续执行
  **/
 
 public class Ack {
