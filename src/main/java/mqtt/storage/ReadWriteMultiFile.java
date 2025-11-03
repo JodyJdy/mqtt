@@ -799,7 +799,7 @@ public class ReadWriteMultiFile {
                 readPos = targetPos;
             } else {
                 // 不在 buffer 内，重新从文件读取
-                long skipped = readFile.skip(targetPos);
+                long skipped = readFile.skip(targetPos-readPos);
                 if (skipped != targetPos) {
                     throw new IOException("seek 越界 (skip 异常)");
                 }
