@@ -27,7 +27,7 @@ public class IndexFileReader {
     /**
      * 读取消息文件
      */
-    private final ReadWriteMultiFile.RandomAccessReader messageFileReader;
+    private final ReadWriteMultiFile.InputStreamReader messageFileReader;
 
 
     /**
@@ -39,7 +39,7 @@ public class IndexFileReader {
 
     private final ReadWriteMultiFile.InputStreamReader topicIndexFileReader;
 
-    public IndexFileReader(String topic,ReadWriteMultiFile.RandomAccessReader messageFileReader) {
+    public IndexFileReader(String topic,ReadWriteMultiFile.InputStreamReader messageFileReader) {
         this.topic = topic;
         topicIndexFile = new ReadWriteMultiFile(topic, ".topic", FileUtil.INDEX_PATH, FileUtil.DEFAULT_SINGLE_FILE_SIZE);
         topicIndexFileReader = topicIndexFile.getInputStreamReader(topic);

@@ -48,7 +48,7 @@ public class MessageStorage {
         if (topic2IndexFileWriterReader.containsKey(topic)) {
             return false;
         }
-        topic2IndexFileWriterReader.put(topic, new IndexFileReader(topic, messageFile.getRandomAccessReader()));
+        topic2IndexFileWriterReader.put(topic, new IndexFileReader(topic, messageFile.getInputStreamReader()));
         return true;
     }
 
@@ -65,7 +65,7 @@ public class MessageStorage {
     /**
      * 向文件写数据
      */
-    void writeMessage(Message msg) throws IOException {
+    public void writeMessage(Message msg) throws IOException {
         StoredMessage storedMessage = Message.transToStoredMessage(msg);
         long globalPos = writeMessage(storedMessage);
         String topic = msg.getTopic();

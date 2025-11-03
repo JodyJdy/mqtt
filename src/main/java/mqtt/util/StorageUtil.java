@@ -44,6 +44,17 @@ public class StorageUtil {
         buffer.put(tempBuffer.toByteArray());
     }
 
+    public static Message readMessage(ReadWriteMultiFile.InputStreamReader reader) throws IOException {
+        int packetId = (reader.readByte() << 8) + reader.readByte();
+        int qos = reader.readByte();
+        int topicLen = (reader.readByte() << 8) + reader.readByte();
+        byte[] topics = new byte[topicLen];
+        reader.read(topics, 0, topics.length);
+        int msgLen = (reader.readByte() << 8) + reader.readByte();
+        byte[] msg = new byte[msgLen];
+        reader.read(msg, 0, msgLen);
+        return StoredMessage.transToMessage(new StoredMessage(packetId, topicLen, topics, msgLen, msg, qos));
+    }
 
 
     /**

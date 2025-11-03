@@ -691,6 +691,12 @@ public class ReadWriteMultiFile {
         private InputStream readFile;
 
 
+        private byte[] buffer;
+        private int bufferPos;
+        private int bufferLimit;
+        private static final int BUFFER_SIZE = FileUtil.MESSAGE_READ_BUFFER_SIZE;
+
+
         public int getReadFileIndex() {
             return readFileIndex;
         }
@@ -713,11 +719,22 @@ public class ReadWriteMultiFile {
                 if (skip != readPos) {
                     throw new RuntimeException("skip 越界");
                 }
+                initBuffer();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
 
+        private void initBuffer() {
+            buffer = new byte[BUFFER_SIZE];
+            bufferPos = 0;
+            bufferLimit = 0;
+        }
+
+        private void resetBuffer() {
+            bufferPos = 0;
+            bufferLimit = 0;
+        }
         /**
          * 传入要读取文件的下标，和该文件读取位置
          */
@@ -730,6 +747,7 @@ public class ReadWriteMultiFile {
                 if (skip != readPos) {
                     throw new RuntimeException("skip 越界");
                 }
+                initBuffer();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -744,21 +762,50 @@ public class ReadWriteMultiFile {
          *只能向前
          */
         public void seek(long globalPos) throws IOException {
-            //获取读取的文件的索引
-            int before = this.readFileIndex;
-            this.readFileIndex = (int) (globalPos / singleFileSize);
-            this.readPos = (int) (globalPos % singleFileSize);
-            //文件变更
-            if (before != readFileIndex) {
-                readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
-            }
-            if (readFileIndex == ReadWriteMultiFile.this.writeFileIndex) {
-                if (readPos > ReadWriteMultiFile.this.writeFilePos) {
-                    throw new RuntimeException("pos越界");
+
+            int targetFileIndex = (int) (globalPos / singleFileSize);
+            long targetPos = globalPos % singleFileSize;
+
+            // 如果目标文件发生变化，重新打开流
+            if (targetFileIndex != this.readFileIndex) {
+                this.readFileIndex = targetFileIndex;
+                this.readPos = targetPos;
+
+                if (readFile != null) {
+                    readFile.close();
                 }
+
+                readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
+
+                // 直接 skip 到目标位置再 refill buffer
+                long skipped = readFile.skip(targetPos);
+                if (skipped != targetPos) {
+                    throw new IOException("seek 越界 (skip 异常)");
+                }
+
+                // 清空并重新填充 buffer
+                resetBuffer();
+                refillBuffer();
+                return;
             }
-            if(readFile.skip(readPos) != readPos){
-                throw new RuntimeException("pos越界");
+
+            // === 当前 seek 在同一个文件内 ===
+            long bufferStartPos = readPos -  bufferPos;
+            long bufferEndPos = readPos + (bufferLimit - bufferPos);
+
+            if (targetPos >= bufferStartPos && targetPos < bufferEndPos) {
+                // seek 的位置还在 buffer 内，只调整 bufferPos
+                bufferPos = (int) (targetPos - bufferStartPos);
+                readPos = targetPos;
+            } else {
+                // 不在 buffer 内，重新从文件读取
+                long skipped = readFile.skip(targetPos);
+                if (skipped != targetPos) {
+                    throw new IOException("seek 越界 (skip 异常)");
+                }
+                readPos = targetPos;
+                resetBuffer();
+                refillBuffer();
             }
         }
 
@@ -768,49 +815,47 @@ public class ReadWriteMultiFile {
             }
             return ReadWriteMultiFile.this.writeFilePos;
         }
-
-        public int readByte() throws IOException {
-            long curLength = currentFileLength();
-            if (readPos < curLength) {
-                readPos++;
-                return readFile.read();
-            } else if (readFileIndex < ReadWriteMultiFile.this.writeFileIndex) {
-                switchFile();
-                return readByte();
-            } else {
-                throw new IOException("无可读取的数据");
+        private void refillBuffer() throws IOException {
+            bufferLimit = readFile.read(buffer);
+            bufferPos = 0;
+            if (bufferLimit == -1) { // 当前文件读完
+                if (readFileIndex < ReadWriteMultiFile.this.writeFileIndex) {
+                    switchFile();
+                    refillBuffer(); // 切换后递归填充
+                } else {
+                    throw new IOException("无可读取的数据");
+                }
             }
         }
 
-        public int read(byte[] dst, int offset, int length) throws IOException {
-            // 记录一开始要读取的长度
-            int initLen = length;
-            //顺序读取
-            while (readFileIndex <= ReadWriteMultiFile.this.writeFileIndex) {
-                long curLength = currentFileLength();
-                //可以一次性读取完
-                if (readPos + length <= curLength) {
-                    readPos += readFile.read(dst, offset, length);
-                    length = 0;
-                    break;
-                } else {
-                    //读取一部分，之后的内容从下个文件里面读取
-                    int tempLen = (int) (curLength - readPos);
-                    tempLen = readFile.read(dst, offset, tempLen);
-                    readPos += tempLen;
-                    //调整偏移量
-                    offset += tempLen;
-                    //计算还要读取多少字节
-                    length -= tempLen;
-                }
-                //已经是最后一个文件了，那么读到多少返回多少
-                if (readFileIndex == ReadWriteMultiFile.this.writeFileIndex) {
-                    break;
-                }
-                switchFile();
+        public int readByte() throws IOException {
+            if (bufferPos >= bufferLimit) {
+                refillBuffer();
             }
-            // 返回实际读取了多少
-            return initLen - length;
+
+            readPos++;
+            return buffer[bufferPos++] & 0xFF;
+        }
+
+        public int read(byte[] dst, int offset, int length) throws IOException {
+            int readCount = 0;
+            while (length > 0) {
+                if (bufferPos >= bufferLimit) {
+                    refillBuffer();
+                }
+
+                int bytesAvailable = bufferLimit - bufferPos;
+                int bytesToRead = Math.min(bytesAvailable, length);
+
+                System.arraycopy(buffer, bufferPos, dst, offset, bytesToRead);
+                bufferPos += bytesToRead;
+                offset += bytesToRead;
+                length -= bytesToRead;
+                readCount += bytesToRead;
+                readPos += bytesToRead;
+            }
+
+            return readCount;
         }
 
         public int read(byte[] dst) throws IOException {
@@ -833,6 +878,7 @@ public class ReadWriteMultiFile {
             this.readPos = 0;
             try {
                 readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
+                resetBuffer();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

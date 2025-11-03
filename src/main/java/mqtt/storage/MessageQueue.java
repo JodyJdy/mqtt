@@ -24,7 +24,11 @@ public class MessageQueue {
     }
 
     public void addMessage(CallbackableMessage msg) {
-        queue.add(msg);
+        try {
+            queue.put(msg);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
