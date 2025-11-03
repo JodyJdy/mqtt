@@ -23,6 +23,11 @@ public class Pair <K,V>{
         return v;
     }
 
+    @Override
+    public String toString() {
+        return "k=" +k + ",v="+v;
+    }
+
     public static <K, V> Pair<K, V> create(K k, V v) {
         return new Pair<>(k, v);
     }

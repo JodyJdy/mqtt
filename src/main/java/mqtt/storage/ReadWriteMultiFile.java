@@ -687,7 +687,7 @@ public class ReadWriteMultiFile {
         /**
          * 在下标为readFileIndex的文件中读取到的位置
          */
-        private volatile long readPos;
+        private  long readPos;
         private InputStream readFile;
 
 
@@ -742,7 +742,7 @@ public class ReadWriteMultiFile {
             this.readFileIndex = readFileIndex;
             this.readPos = readPos;
             try {
-                readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
+                readFile =  Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath());
                 long skip = readFile.skip(readPos);
                 if (skip != readPos) {
                     throw new RuntimeException("skip 越界");
@@ -775,7 +775,7 @@ public class ReadWriteMultiFile {
                     readFile.close();
                 }
 
-                readFile = new BufferedInputStream(Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath()));
+                readFile =  Files.newInputStream(getReadFileWithFileIndex(this.readFileIndex).toPath());
 
                 // 直接 skip 到目标位置再 refill buffer
                 long skipped = readFile.skip(targetPos);
@@ -800,8 +800,10 @@ public class ReadWriteMultiFile {
             } else {
                 // 不在 buffer 内，重新从文件读取
                 long skipped = readFile.skip(targetPos-readPos);
-                if (skipped != targetPos) {
-                    throw new IOException("seek 越界 (skip 异常)");
+
+                if (skipped+readPos != targetPos) {
+                    System.out.println(this.readFile);
+                    throw new IOException("seek 越界 (skip 异常), target:" + targetPos + " skiiped:" + skipped + "readpos:"+readPos);
                 }
                 readPos = targetPos;
                 resetBuffer();
@@ -816,7 +818,13 @@ public class ReadWriteMultiFile {
             return ReadWriteMultiFile.this.writeFilePos;
         }
         private void refillBuffer() throws IOException {
-            bufferLimit = readFile.read(buffer);
+            if (currentFileLength() == readPos) {
+                bufferPos = 0;
+                bufferLimit = 0;
+                return;
+            }
+            int readBufferSize = (int) Math.min(BUFFER_SIZE, currentFileLength() - readPos);
+            bufferLimit = readFile.read(buffer,0,readBufferSize);
             bufferPos = 0;
             if (bufferLimit == -1) { // 当前文件读完
                 if (readFileIndex < ReadWriteMultiFile.this.writeFileIndex) {
@@ -842,6 +850,9 @@ public class ReadWriteMultiFile {
             while (length > 0) {
                 if (bufferPos >= bufferLimit) {
                     refillBuffer();
+                }
+                if (bufferPos == bufferLimit) {
+                    break;
                 }
 
                 int bytesAvailable = bufferLimit - bufferPos;

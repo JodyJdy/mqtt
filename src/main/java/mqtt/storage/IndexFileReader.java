@@ -1,7 +1,6 @@
 package mqtt.storage;
 
 import mqtt.util.FileUtil;
-import mqtt.util.Pair;
 import mqtt.util.StorageUtil;
 
 import java.io.IOException;
@@ -17,7 +16,7 @@ public class IndexFileReader {
      */
     private String topic;
 
-    private final ConcurrentLinkedQueue<Pair<Long, Long>> messagePosQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<Long> messagePosQueue = new ConcurrentLinkedQueue<>();
 
 
     private final BlockingBool waitMessage = new  BlockingBool();
@@ -65,11 +64,10 @@ public class IndexFileReader {
                 //尝试进行读取,读取不到进行阻塞
                 tryRead();
             }
-            Pair<Long,Long> posPair = messagePosQueue.poll();
-            if (posPair == null) {
+            Long messageGlobalPos = messagePosQueue.poll();
+            if (messageGlobalPos == null) {
                 return null;
             }
-            long messageGlobalPos = posPair.getV();
             messageFileReader.seek(messageGlobalPos);
             return StorageUtil.readMessage(messageFileReader);
         } catch (IOException e) {
@@ -89,17 +87,20 @@ public class IndexFileReader {
             //最大可读位置
             long maxReadPos =topicIndexFile.getGlobalWritePos();
             // 进行读取
-            long curPos = topicIndexFileReader.getReadPos();
             int readSize = (int) (maxReadPos - topicIndexFileReader.getReadPos());
+
+            if (readSize <= 0) {
+                return;
+            }
             //一次最多读取一页
             readSize = Math.min(readSize, FileUtil.READ_MESSAGE_INDEX);
             byte[] bytes = new byte[readSize];
-            topicIndexFileReader.read(bytes);
-            ByteBuffer byteBuffer =ByteBuffer.wrap(bytes);
+            int readNum = topicIndexFileReader.read(bytes);
+            ByteBuffer byteBuffer =ByteBuffer.wrap(bytes,0,readNum);
             //读取了num条消息索引
-            int num = bytes.length / FileUtil.getMessageIndexSize();
+            int num = readNum / FileUtil.getMessageIndexSize();
             for (int i = 0; i < num; i++) {
-                messagePosQueue.add(Pair.create(curPos,byteBuffer.getLong()));
+                messagePosQueue.add(byteBuffer.getLong());
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
