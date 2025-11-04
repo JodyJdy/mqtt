@@ -74,7 +74,7 @@ public class MessageStorage {
             //新创建的主题，一定在mqtt.topic文件的尾部
             addTopic(topic);
         }
-        //将消息位置，记录在 主题对应的索引文件里面
+        //将消息位置，记录在 主题对应的索引文件里面 !!这里同步写/异步写 性能区别不大，无需调整
         topic2IndexFileWriterReader.get(topic).writeMessagePos(globalPos);
     }
 
@@ -101,6 +101,10 @@ public class MessageStorage {
 
     public void stopRead(String topic) {
         topic2IndexFileWriterReader.get(topic).stopRead();
+    }
+
+    public void resetWritePos(long globalPos) {
+        messageFile.resetGlobalWritePos(globalPos);
     }
 
 }

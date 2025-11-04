@@ -174,6 +174,19 @@ public class ReadWriteMultiFile {
         writeFilePointer.force();
     }
 
+    /**
+     *重置全局的写入位置
+     */
+    public synchronized void resetGlobalWritePos(long globalPos) {
+        this.writeFileIndex = (int) (globalPos / singleFileSize);
+        this.writeFilePos = globalPos % singleFileSize;
+        this.writeFile.force();
+        try (RandomAccessFile temp = new RandomAccessFile(FileUtils.getFile(dir, getFileNameWithIndex(writeFileIndex)), "rw")) {
+            this.writeFile = temp.getChannel().map(FileChannel.MapMode.READ_WRITE, writeFilePos, singleFileSize);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * 获取全局在写的位置
